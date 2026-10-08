@@ -1,7 +1,7 @@
 // Pruefung eines hochgeladenen Firmware-Pakets (.ciifw) vor dem Flashen. Rein (kein DOM, kein
 // Port), damit sie ohne Browser pruefbar bleibt. Das Paket ist Nutzereingabe: nichts darin wird geglaubt, was hier nicht
-// gegen die feste Lage unten nachgerechnet wird. sha256 sichert nur die Unversehrtheit, nicht die Herkunft (die
-// ECDSA-Signatur kommt mit R10, das Feld "signature" ist dafuer reserviert).
+// gegen die feste Lage unten nachgerechnet wird. sha256 sichert nur die Unversehrtheit; die Herkunft sichert die
+// ECDSA-P-256-Signatur (R10) ueber das Manifest im Paket, das wiederum Lage, Groesse und sha256 jedes Teils nennt.
 
 // Partitionstabellen beider Images (Sender, Empfaenger), gleich den partitions.csv der Firmware. Ein Host-Check
 // vergleicht diesen JSON-Block mit den CSV-Dateien: bei einer Aenderung beide anpassen.
@@ -19,7 +19,14 @@ export const LAYOUT = /*LAYOUT*/{
     ["storage", "data", "0x620000", "0x200000"]]}
 }/*END*/;
 
+// Oeffentliche Schluessel, denen die Seite traut: {"id": erste 8 Byte von sha256(pub) als Hex, "pub": Base64 des
+// unkomprimierten Punkts (65 Byte)}. Leer = noch kein Signierschluessel: unsignierte Pakete gehen nur nach Bestaetigung.
+// Steht hier ein Schluessel, lehnt die Seite jedes unsignierte Release-Paket ab. Eintrag liefert make_web_flasher.
+export const TRUSTED_KEYS = /*KEYS*/[{"id": "871755c436424248", "pub": "BD//otkR2yDyYCTIc5zhyR52P76qsObpmNk50dpZ+H053IMQvCEny8NmS6dN9xHIalSyNF5fz2P+QtM4Y0KsKGQ="}]/*END*/;
+
 export const FORMAT_VERSION = 1;
+const MANIFEST_SCHEMA = 1;
+const MANIFEST_MAX = 2048;
 export const NVS = [0x9000, 0xf000];  // halboffen; wird nie geschrieben und nie geloescht
 const CHIP_ID_ESP32S3 = 9;
 const APP_DESC_MAGIC = 0xabcd5432;
@@ -94,9 +101,52 @@ function checkTable(role, d) {
 const ROLE_ACC = { sender: "den Sender", receiver: "den Empfänger" };
 const ROLE_NOM = { sender: "der Sender", receiver: "der Empfänger" };
 
-// text: Inhalt der .ciifw-Datei; role: "sender" | "receiver" (Wahl des Nutzers); mode: "new" | "update".
-// Liefert { parts: [{name, address, data}], dev, version, appVersion } oder wirft PackageError (Text fuer den Nutzer).
-export async function validatePackage(text, role, mode) {
+const b64bytes = (s, what) => {
+  if (typeof s !== "string") fail(`Das Paket ist beschädigt (${what}).`);
+  try { return Uint8Array.from(atob(s), (c) => c.charCodeAt(0)); } catch { fail(`Das Paket ist beschädigt (${what}).`); }
+};
+
+// Signatur (r||s, 64 Byte) ueber die exakten Bytes des Manifests mit einem Schluessel aus keys. Liefert die Kennung.
+async function checkSignature(pkg, keys) {
+  const sig = pkg.signature;
+  if (!sig || typeof sig !== "object" || sig.alg !== "ES256" || typeof sig.key !== "string") fail("Die Signatur des Pakets ist unlesbar.");
+  const key = keys.find((k) => k && k.id === sig.key);
+  if (!key) fail("Das Paket ist mit einem unbekannten Schlüssel signiert. Nichts wurde geschrieben.");
+  const raw = b64bytes(sig.sig, "Signatur");
+  const pub = b64bytes(key.pub, "Schlüssel");
+  if (raw.length !== 64 || pub.length !== 65 || pub[0] !== 4) fail("Die Signatur des Pakets ist unlesbar.");
+  let ok = false;
+  try {
+    const k = await crypto.subtle.importKey("raw", pub, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+    ok = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, k, raw, new TextEncoder().encode(pkg.manifest));
+  } catch { ok = false; }
+  if (!ok) fail("Die Signatur des Pakets stimmt nicht. Das Paket wurde verändert oder stammt nicht vom Hersteller.");
+  return sig.key;
+}
+
+// Das (signierte) Manifest muss genau die Teile des Pakets nennen, mit Lage, Groesse und sha256.
+function checkManifest(pkg, lay) {
+  if (typeof pkg.manifest !== "string" || pkg.manifest.length > MANIFEST_MAX || !/^[\x20-\x7e]*$/.test(pkg.manifest)) fail("Das Manifest des Pakets ist unlesbar.");
+  let m;
+  try { m = JSON.parse(pkg.manifest); } catch { fail("Das Manifest des Pakets ist unlesbar."); }
+  if (!m || typeof m !== "object" || Array.isArray(m) || m.schema !== MANIFEST_SCHEMA) fail("Das Manifest hat ein anderes Format. Bitte die neueste Version dieser Seite verwenden.");
+  if (m.project !== lay.project || m.chip !== "ESP32-S3") fail("Das Manifest passt nicht zu diesem Gerät.");
+  if (m.build !== pkg.build) fail("Das Manifest widerspricht dem Paket (Bauart).");
+  if (!Number.isInteger(m.version) || m.version < 1) fail("Das Manifest des Pakets ist unlesbar.");
+  const want = {};
+  for (const p of pkg.parts) {
+    want[p.name + "_offset"] = p.offset; want[p.name + "_size"] = p.size; want[p.name + "_sha256"] = String(p.sha256).toLowerCase();
+  }
+  const got = Object.entries(m).filter(([k]) => /_(offset|size|sha256)$/.test(k));
+  if (got.length !== Object.keys(want).length || got.some(([k, v]) => want[k] !== v)) fail("Das Manifest widerspricht den Teilen im Paket. Nichts wurde geschrieben.");
+  return m;
+}
+
+// text: Inhalt der .ciifw-Datei; role: "sender" | "receiver" (Wahl des Nutzers); mode: "new" | "update";
+// keys: vertraute Schluessel (Vorgabe TRUSTED_KEYS, die Tests geben eigene).
+// Liefert { parts: [{name, address, data}], dev, version, appVersion, signed, keyId, seq } oder wirft PackageError
+// (Text fuer den Nutzer). signed == false: die Seite verlangt eine Bestaetigung.
+export async function validatePackage(text, role, mode, keys = TRUSTED_KEYS) {
   if (!LAYOUT[role]) fail("Unbekanntes Gerät.");
   if (mode !== "new" && mode !== "update") fail("Unbekannte Art der Installation.");
   let pkg;
@@ -145,11 +195,25 @@ export async function validatePackage(text, role, mode) {
   const release = s.includes(RELEASE_MARK) && !s.includes(DEV_MARK);
   if (pkg.build === "release" && !release) fail("Das Paket gibt sich als Release aus, enthält aber einen Entwicklerstand.");
 
+  // Echtheit: erst die Signatur ueber die Manifest-Bytes, dann das Manifest gegen die (schon gehashten) Teile.
+  let keyId = null, seq = null;
+  if (pkg.signature !== null && pkg.signature !== undefined) {
+    if (typeof pkg.manifest !== "string") fail("Das Manifest des Pakets ist unlesbar.");
+    keyId = await checkSignature(pkg, Array.isArray(keys) ? keys : []);
+    seq = checkManifest(pkg, lay).version;
+  } else {
+    if (release && Array.isArray(keys) && keys.length) fail("Dieses Release-Paket ist nicht signiert. Nichts wurde geschrieben.");
+    if (pkg.manifest !== undefined) seq = checkManifest(pkg, lay).version;
+  }
+
   return {
     parts: want.map((n) => byName.get(n)).sort((a, b) => a.address - b.address),
     dev: !release,
     version: String(pkg.version || "?"),
     appVersion: appInfo(app).version,
+    signed: keyId !== null,
+    keyId,
+    seq,
   };
 }
 

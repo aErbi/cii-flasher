@@ -165,11 +165,16 @@ Version 151 geht auch). Safari und ältere Firefox-Versionen unterstützen das n
 <div class="tiles"><div class="tile"><div class="lbl">Gerät</div><div class="v" id="t-role"></div></div>
 <div class="tile"><div class="lbl">Version</div><div class="v" id="t-ver"></div></div>
 <div class="tile"><div class="lbl">Wird geschrieben</div><div class="v" id="t-parts"></div></div>
-<div class="tile"><div class="lbl">Größe</div><div class="v" id="t-size"></div></div></div>
+<div class="tile"><div class="lbl">Größe</div><div class="v" id="t-size"></div></div>
+<div class="tile"><div class="lbl">Herkunft</div><div class="v" id="t-sig"></div></div></div>
 <div class="note warn" id="devw" hidden><svg><use href="#i-warn"/></svg><div class="stack" style="margin:0">
 <div><span class="dev">ENTWICKLERSTAND</span><br>Diese Firmware ist nur für Tests gedacht und nicht für den Alltag freigegeben. Nur verwenden, wenn
 Sie das ausdrücklich so vorhaben.</div>
 <label class="ck"><input type="checkbox" id="devok"> Ich will diesen Entwicklerstand trotzdem installieren.</label></div></div>
+<div class="note warn" id="unsw" hidden><svg><use href="#i-warn"/></svg><div class="stack" style="margin:0">
+<div><b>Nicht signiert.</b><br>Diese Seite kann nicht prüfen, wer das Paket gebaut hat. Nur verwenden, wenn Sie die Datei selbst
+gebaut oder von einer Quelle haben, der Sie vertrauen.</div>
+<label class="ck"><input type="checkbox" id="unsok"> Ich will dieses unsignierte Paket trotzdem installieren.</label></div></div>
 </div>
 </div></section>
 
@@ -274,7 +279,7 @@ if (!serialOk) {
 
 // ---- Schritte ----
 function render() {
-  const pkgReady = !!state.pkg && (!state.pkg.dev || $("devok").checked);
+  const pkgReady = !!state.pkg && (!state.pkg.dev || $("devok").checked) && (state.pkg.signed || $("unsok").checked);
   $("s2").classList.toggle("off", !state.role);
   $("s3").classList.toggle("off", !(state.role && state.mode && pkgReady));
   $("go").disabled = !(serialOk && state.role && state.mode && pkgReady) || state.busy;
@@ -293,6 +298,7 @@ function render() {
 for (const r of document.querySelectorAll("input[name=role]")) r.onchange = () => { state.role = r.value; recheck(); };
 for (const r of document.querySelectorAll("input[name=mode]")) r.onchange = () => { state.mode = r.value; recheck(); };
 $("devok").onchange = render;
+$("unsok").onchange = render;
 
 // ---- Paket laden und pruefen ----
 const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.round(n / 1024) + " KB";
@@ -300,7 +306,7 @@ const PART_DE = { "bootloader": "Startprogramm", "partition-table": "Aufteilung"
 
 async function recheck() {
   state.pkg = null;
-  $("pkerr").hidden = true; $("pkok").hidden = true; $("devok").checked = false;
+  $("pkerr").hidden = true; $("pkok").hidden = true; $("devok").checked = false; $("unsok").checked = false;
   hideResult();
   if (state.text && state.role) {
     try {
@@ -309,7 +315,9 @@ async function recheck() {
       $("t-ver").textContent = state.pkg.version;
       $("t-parts").textContent = state.mode ? state.pkg.parts.map((p) => PART_DE[p.name] || p.name).join(", ") : "Art wählen";
       $("t-size").textContent = fmtSize(state.pkg.parts.reduce((s, p) => s + p.data.length, 0));
+      $("t-sig").textContent = state.pkg.signed ? "signiert (" + state.pkg.keyId.slice(0, 8) + ")" : "nicht signiert";
       $("devw").hidden = !state.pkg.dev;
+      $("unsw").hidden = state.pkg.signed;
       $("pkok").hidden = false;
     } catch (e) {
       $("pkerrt").textContent = " " + (e instanceof PackageError ? e.message : "Die Datei ließ sich nicht prüfen (" + e.message + ").");
@@ -524,6 +532,7 @@ $("go").onclick = async () => {
   try { pkg = await validatePackage(state.text, state.role, state.mode); }
   catch (e) { recheck(); return; }
   if (pkg.dev && !$("devok").checked) return;
+  if (!pkg.signed && !$("unsok").checked) return;
   hideResult();
   let port;
   try {
