@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CII Flasher</title>
+<meta name="description" content="Firmware für den Sender und den Empfänger im Browser installieren oder aktualisieren.">
+<style>
+/* Gestaltung nach dem Style Guide "Industrial Material 3", mit Erlaubnis verwendet. */
+:root{color-scheme:light dark;--b:7px;--bl:14px;--bs:5px;
+--hex:polygon(var(--b) 0,100% 0,100% calc(100% - var(--b)),calc(100% - var(--b)) 100%,0 100%,0 var(--b));
+--hexl:polygon(var(--bl) 0,100% 0,100% calc(100% - var(--bl)),calc(100% - var(--bl)) 100%,0 100%,0 var(--bl));
+--hexlin:polygon(13.41px 0,100% 0,100% calc(100% - 13.41px),calc(100% - 13.41px) 100%,0 100%,0 13.41px);
+--hexs:polygon(var(--bs) 0,100% 0,100% calc(100% - var(--bs)),calc(100% - var(--bs)) 100%,0 100%,0 var(--bs));
+--sans:system-ui,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+--bg:#f3f3f1;--row:#ffffff;--alt:#ebebe8;--fr:#d6d6d2;--frh:#c4c4bf;--edge:#9a9a9a73;--mut:#6b6b6b;--lab:#474747;--tx:#1c1c1c;
+--pri:#13808f;--prit:#ffffff;--err:#b8361a;--errbg:#b8361a1f;--yel:#8a6d00;--yelbg:#dbb53833;--grn:#2c8a45;--grnbg:#57c26b26}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1c1c;--row:#212121;--alt:#2a2a2a;--fr:#323232;--frh:#3c3c3c;
+--edge:#8a8a8a73;--mut:#8a8a8a;--lab:#b4b4b4;--tx:#e6e6e6;--pri:#34b4c5;--prit:#101010;--err:#ee6a4d;--errbg:#d33c1b2e;--yel:#dbb538;
+--yelbg:#dbb53824;--grn:#57c26b;--grnbg:#57c26b24}}
+:root[data-theme="dark"]{--bg:#1c1c1c;--row:#212121;--alt:#2a2a2a;--fr:#323232;--frh:#3c3c3c;--edge:#8a8a8a73;--mut:#8a8a8a;--lab:#b4b4b4;
+--tx:#e6e6e6;--pri:#34b4c5;--prit:#101010;--err:#ee6a4d;--errbg:#d33c1b2e;--yel:#dbb538;--yelbg:#dbb53824;--grn:#57c26b;--grnbg:#57c26b24}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--tx);font:17px/1.55 var(--sans);min-height:100vh}
+main{max-width:860px;margin:0 auto;padding:0 16px 56px}
+h1{font-size:1.6rem;line-height:1.2;margin:0}
+h2{font-size:1.25rem;font-weight:600;line-height:1.25;margin:0}
+p{margin:0}
+a{color:var(--pri)}
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--fr)}
+.bar>div{max-width:860px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:600;margin-right:auto;display:flex;align-items:center;gap:10px}
+.brand svg{width:26px;height:26px;color:var(--pri)}
+.stack>*+*{margin-top:16px}
+.card{clip-path:var(--hexl);background:var(--edge);padding:1px;display:flex}
+.card>.in{clip-path:var(--hexlin);background:var(--row);padding:20px;flex:1;min-width:0}
+.card.off{opacity:.45;pointer-events:none}
+.lbl{font:12px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
+.cap{color:var(--mut);font-size:15px}
+.num{display:inline-flex;width:30px;height:30px;align-items:center;justify-content:center;background:var(--alt);color:var(--lab);
+clip-path:var(--hexs);font:600 15px var(--mono);flex:none}
+.head{display:flex;gap:12px;align-items:center}
+.done .num{background:var(--grnbg);color:var(--grn)}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:20px 0 4px}
+.steps span{clip-path:var(--hexs);background:var(--alt);color:var(--mut);padding:6px 12px;font-size:14px}
+.steps span.on{background:color-mix(in srgb,var(--pri) 22%,var(--alt));color:var(--tx)}
+.steps span.ok{color:var(--grn)}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.opt{position:relative;display:flex;gap:14px;align-items:center;clip-path:var(--hex);background:var(--alt);padding:16px;cursor:pointer;
+min-height:104px;outline:2px solid transparent;outline-offset:-2px}
+.opt:hover{background:color-mix(in srgb,var(--pri) 8%,var(--alt))}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt:has(input:checked){background:color-mix(in srgb,var(--pri) 18%,var(--alt));outline-color:var(--pri)}
+.opt:has(input:focus-visible){outline-color:var(--tx)}
+.opt b{display:block;font-size:18px}
+.opt small{display:block;color:var(--lab);font-size:14px;line-height:1.4;margin-top:2px}
+.opt .ill{width:96px;height:72px;flex:none;color:var(--lab)}
+.tag{display:inline-block;font:12px var(--mono);color:var(--grn);background:var(--grnbg);padding:1px 8px;margin-left:6px;vertical-align:middle}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;min-height:150px;padding:20px;
+clip-path:var(--hex);background:var(--alt);border:0;cursor:pointer;color:var(--lab);width:100%;font:inherit}
+.drop.over,.drop:hover{background:color-mix(in srgb,var(--pri) 14%,var(--alt));color:var(--tx)}
+.drop svg{width:40px;height:40px;color:var(--pri)}
+.drop b{color:var(--tx);font-size:18px}
+.btn{clip-path:var(--hex);border:0;min-height:52px;padding:0 26px;background:var(--alt);color:var(--tx);font:600 17px var(--sans);cursor:pointer;
+display:inline-flex;align-items:center;justify-content:center;gap:10px}
+.btn:hover{background:color-mix(in srgb,var(--pri) 18%,var(--alt))}
+.btn.pri{background:var(--pri);color:var(--prit)}.btn.pri:hover{background:color-mix(in srgb,var(--pri) 85%,var(--tx))}
+.btn.big{min-height:60px;font-size:19px;padding:0 34px}
+.btn.gh{background:none;color:var(--lab);font-weight:400}.btn.gh:hover{color:var(--pri)}
+.btn:disabled,.btn:disabled:hover{background:var(--alt);color:var(--mut);cursor:default}
+.row{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center}
+.note{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;clip-path:var(--hex);background:var(--alt)}
+.note svg{width:22px;height:22px;flex:none;margin-top:2px}
+.note.ok{background:var(--grnbg)}.note.ok svg{color:var(--grn)}
+.note.warn{background:var(--yelbg)}.note.warn svg{color:var(--yel)}
+.note.bad{background:var(--errbg)}.note.bad svg{color:var(--err)}
+.note.info svg{color:var(--pri)}
+.note b{display:block}
+.dev{font:700 15px var(--mono);letter-spacing:.12em;color:var(--yel)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.tile{clip-path:var(--hexs);background:var(--alt);padding:8px 12px;min-width:0}
+.tile .v{font:600 16px var(--mono);overflow-wrap:anywhere}
+.prog{height:14px;background:var(--alt);clip-path:var(--hexs);overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--pri);transition:width .2s}
+.st{font-size:16px;min-height:26px}
+.big-ok{display:flex;gap:16px;align-items:center}
+.big-ok svg{width:56px;height:56px;color:var(--grn);flex:none}
+details{clip-path:var(--hex);background:var(--alt);padding:12px 16px}
+details+details{margin-top:8px}
+summary{cursor:pointer;font-weight:600}
+details ul,details ol{margin:10px 0 2px;padding-left:22px}
+details li+li{margin-top:6px}
+code{font:14px var(--mono);background:var(--fr);padding:1px 5px}
+pre.log{font:12px/1.45 var(--mono);background:var(--row);padding:10px;margin:10px 0 0;max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+label.ck{display:flex;gap:10px;align-items:center;min-height:44px;font-weight:600}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--pri);flex:none}
+svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+[hidden]{display:none!important}
+footer{max-width:860px;margin:0 auto;padding:0 16px 40px;color:var(--mut);font-size:14px}
+@media(max-width:520px){body{font-size:16px}.opt .ill{width:72px;height:56px}.btn.big{width:100%}}
+@media(prefers-reduced-motion:reduce){.prog i{transition:none}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-7"/></symbol>
+<symbol id="i-bad" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+</defs></svg>
+
+<div class="bar"><div>
+<span class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>CII Flasher</span>
+<button class="btn gh" id="theme" type="button" aria-label="Hell oder dunkel umschalten">Hell/Dunkel</button>
+</div></div>
+
+<main>
+<div class="stack" style="margin-top:24px">
+<h1>Firmware installieren</h1>
+<p>Diese Seite installiert die Firmware auf Ihrem Sender oder Empfänger, direkt aus dem Browser. Sie brauchen
+<b>Google Chrome, Chromium oder Microsoft Edge auf einem Computer</b> (Windows, macOS oder Linux), ein <b>USB-Kabel</b> und die
+Firmware-Datei (<code>.ciifw</code>). Firefox ab Version 151 geht auch, dort ist die Auswahl des Geräts aber hakelig.</p>
+<div class="note ok"><svg><use href="#i-ok"/></svg><div><b>Einstellungen und Kopplung bleiben erhalten.</b>
+Die Seite löscht nie etwas: WLAN, Passwörter, Zählerschlüssel, Kopplung und Zählerstände bleiben auf dem Gerät.</div></div>
+<div class="note bad" id="nows" hidden><svg><use href="#i-bad"/></svg><div><b>Dieser Browser kann leider keine Geräte über USB ansprechen.</b>
+<span id="nowstx">Bitte öffnen Sie diese Seite in Google Chrome, Chromium oder Microsoft Edge auf einem Computer (ein Firefox ab
+Version 151 geht auch). Safari und ältere Firefox-Versionen unterstützen das nötige Web Serial nicht, Tablets und Telefone ebenfalls nicht.</span></div></div>
+</div>
+
+<nav class="steps" aria-label="Fortschritt"><span id="c1" class="on">1 Gerät</span><span id="c2">2 Firmware</span><span id="c3">3 Installieren</span><span id="c4">4 Fertig</span></nav>
+
+<div class="stack" style="margin-top:12px">
+
+<section class="card" id="s1"><div class="in stack">
+<div class="head"><span class="num">1</span><h2>Welches Gerät?</h2></div>
+<div class="opts" role="radiogroup" aria-label="Gerät">
+<label class="opt"><input type="radio" name="role" value="receiver">
+<svg class="ill" viewBox="0 0 96 72" aria-hidden="true"><rect x="6" y="6" width="84" height="60" rx="6"/><rect x="14" y="14" width="68" height="36" rx="2" fill="currentColor" fill-opacity=".14"/>
+<path d="M22 26h20M22 34h32M22 42h14" stroke-width="3"/><circle cx="48" cy="58" r="2.5"/></svg>
+<span><b>Empfänger</b><small>Hat ein farbiges Display und steht in der Wohnung, meist am WLAN.</small></span></label>
+<label class="opt"><input type="radio" name="role" value="sender">
+<svg class="ill" viewBox="0 0 96 72" aria-hidden="true"><rect x="18" y="10" width="60" height="44" rx="6"/><circle cx="34" cy="24" r="4" fill="currentColor"/>
+<path d="M48 54v8h-8M48 62h8" /><path d="M30 40h36" stroke-dasharray="3 4"/></svg>
+<span><b>Sender</b><small>Kein Display, nur eine Leuchte. Hängt per Kabel am Stromzähler.</small></span></label>
+</div>
+<p class="cap">Erkennen: Der Empfänger hat das Display (AMOLED), der Sender nicht.</p>
+</div></section>
+
+<section class="card off" id="s2"><div class="in stack">
+<div class="head"><span class="num">2</span><h2>Was soll passieren?</h2></div>
+<div class="opts" role="radiogroup" aria-label="Art der Installation">
+<label class="opt"><input type="radio" name="mode" value="update">
+<span><b>Aktualisieren <span class="tag">üblich</span></b><small>Für Geräte, auf denen diese Firmware schon läuft. Schreibt nur das Programm.</small></span></label>
+<label class="opt"><input type="radio" name="mode" value="new">
+<span><b>Neu installieren</b><small>Erstes Mal oder Umstieg von der alten Firmware. Schreibt Startprogramm, Aufteilung und Programm. Einstellungen bleiben trotzdem.</small></span></label>
+</div>
+<div class="lbl">Firmware-Datei</div>
+<button class="drop" id="drop" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M4 15v4h16v-4"/></svg>
+<b id="dropt">Datei hierher ziehen oder auswählen</b><span class="cap" id="drops">Endung .ciifw, zum Beispiel cii-receiver-….ciifw</span></button>
+<input type="file" id="file" accept=".ciifw" hidden>
+<div class="row" id="srvrow" hidden><button class="btn" id="srv" type="button">Aktuelle Firmware vom Server laden</button></div>
+<div class="note bad" id="pkerr" hidden><svg><use href="#i-bad"/></svg><div><b>Diese Datei passt nicht.</b><span id="pkerrt"></span></div></div>
+<div id="pkok" class="stack" hidden>
+<div class="tiles"><div class="tile"><div class="lbl">Gerät</div><div class="v" id="t-role"></div></div>
+<div class="tile"><div class="lbl">Version</div><div class="v" id="t-ver"></div></div>
+<div class="tile"><div class="lbl">Wird geschrieben</div><div class="v" id="t-parts"></div></div>
+<div class="tile"><div class="lbl">Größe</div><div class="v" id="t-size"></div></div></div>
+<div class="note warn" id="devw" hidden><svg><use href="#i-warn"/></svg><div class="stack" style="margin:0">
+<div><span class="dev">ENTWICKLERSTAND</span><br>Diese Firmware ist nur für Tests gedacht und nicht für den Alltag freigegeben. Nur verwenden, wenn
+Sie das ausdrücklich so vorhaben.</div>
+<label class="ck"><input type="checkbox" id="devok"> Ich will diesen Entwicklerstand trotzdem installieren.</label></div></div>
+</div>
+</div></section>
+
+<section class="card off" id="s3"><div class="in stack">
+<div class="head"><span class="num">3</span><h2>Verbinden und installieren</h2></div>
+<ol style="margin:0;padding-left:22px">
+<li>Gerät mit dem USB-Kabel an den Computer anschließen.</li>
+<li>Auf <b>Installieren</b> klicken. Der Browser zeigt eine Liste: das Gerät wählen (meist „USB JTAG/serial debug unit“) und <b>Verbinden</b> klicken.
+Die Seite liest dann zuerst, welches Gerät angeschlossen ist, und schreibt nur, wenn es zur Firmware passt.</li>
+<li>Warten, bis „Fertig“ erscheint (etwa eine Minute). Das Kabel bis dahin nicht abziehen.</li>
+</ol>
+<div class="row"><button class="btn pri big" id="go" type="button" disabled>Installieren</button></div>
+<div id="run" class="stack" hidden><div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="bar"></i></div>
+<p class="st" id="st" aria-live="polite"></p><p class="cap" id="who" hidden></p></div>
+<div class="note bad" id="ferr" hidden><svg><use href="#i-bad"/></svg><div class="stack" style="margin:0"><div><b id="ferrh">Das hat nicht geklappt.</b><span id="ferrt"></span></div>
+<div class="row"><button class="btn" id="again" type="button">Erneut versuchen</button></div></div></div>
+<details><summary>Klappt die Verbindung nicht?</summary><ul>
+<li><b>Gerät wecken:</b> Der Sender schläft zwischen zwei Messungen und ist dann nicht erreichbar. Taste BOOT gedrückt halten, Taste RESET kurz drücken,
+BOOT loslassen. Danach erneut auf Installieren klicken.</li>
+<li><b>Kabel:</b> Manche USB-Kabel laden nur und übertragen keine Daten. Ein anderes Kabel probieren, am besten direkt am Computer ohne Hub.</li>
+<li><b>Anderes Programm:</b> Ein offenes Programm, das den Anschluss schon benutzt (Arduino, ein serieller Monitor, ein zweiter Browser-Tab), vorher schließen.</li>
+<li><b>Linux:</b> siehe „Systemvoraussetzungen“ unten (Berechtigung für den USB-Anschluss).</li>
+<li><b>Zwei Geräte angeschlossen:</b> In der Liste des Browsers heißen Sender und Empfänger gleich. Nach dem Verbinden zeigt die Seite,
+welches Gerät es ist (zum Beispiel „Empfänger …1a2b3c“, dieselben sechs Zeichen wie am Ende des WLAN-Namens). Passt das Gerät
+nicht zur Firmware, schreibt die Seite nichts und startet es wieder normal.</li>
+<li><b>Gerät hängt danach:</b> Startet das Gerät nach einem Fehlschlag nicht von selbst, das Gerät kurz vom USB trennen und wieder anstecken.</li>
+</ul></details>
+<details id="logbox"><summary>Protokoll (für die Fehlersuche)</summary><pre class="log" id="log"></pre></details>
+</div></section>
+
+<section class="card off" id="s4"><div class="in stack">
+<div class="head"><span class="num">4</span><h2>Fertig</h2></div>
+<div id="done" class="stack" hidden>
+<div class="big-ok"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ok"/></svg>
+<div><b style="font-size:19px">Die Firmware ist installiert.</b><p id="oktext"></p></div></div>
+<div class="tiles"><div class="tile"><div class="lbl">Gerät</div><div class="v" id="d-dev"></div></div>
+<div class="tile"><div class="lbl">Version</div><div class="v" id="d-ver"></div></div>
+<div class="tile"><div class="lbl">Geschrieben</div><div class="v" id="d-parts"></div></div></div>
+<div class="note ok"><svg><use href="#i-ok"/></svg><div><b>Einstellungen und Kopplung bleiben erhalten.</b>
+WLAN, Passwörter, Zählerschlüssel, Kopplung und Zählerstände wurden nicht angerührt. Eine neue Kopplung ist nicht nötig.</div></div>
+<div><b>Jetzt prüfen:</b><ol id="d-check" style="margin:6px 0 0;padding-left:22px"></ol></div>
+</div>
+<p class="cap" id="s4wait">Hier erscheint das Ergebnis.</p>
+<div class="row" id="morerow" hidden><button class="btn" id="more" type="button">Weiteres Gerät installieren</button></div>
+</div></section>
+</div>
+
+<div class="stack" style="margin-top:32px">
+<details><summary>Systemvoraussetzungen</summary><ul>
+<li><b>Browser:</b> am besten Google Chrome, Chromium oder Microsoft Edge (ab Version 89) auf einem Computer. Mozilla Firefox ab
+Version 151 funktioniert auch, die Auswahl des Geräts ist dort aber hakelig. Safari, ältere Firefox-Versionen sowie Browser auf Tablets und Telefonen können keine Geräte über USB ansprechen (Web Serial fehlt).</li>
+<li><b>Windows 10 und 11:</b> kein Treiber nötig, das Gerät meldet sich als serielles USB-Gerät.</li>
+<li><b>macOS:</b> kein Treiber nötig.</li>
+<li><b>Linux:</b> Ihr Benutzer braucht Zugriff auf den USB-Anschluss. Meist genügt die Gruppe <code>dialout</code> (Debian, Ubuntu, Fedora) bzw.
+<code>uucp</code> (Arch): <code>sudo usermod -aG dialout $USER</code>, danach ab- und wieder anmelden. Alternativ eine udev-Regel für das Gerät
+(Hersteller-ID 303a): <code>SUBSYSTEMS=="usb", ATTRS{idVendor}=="303a", MODE="0660", TAG+="uaccess"</code> in
+<code>/etc/udev/rules.d/60-cii-flasher.rules</code>, dann <code>sudo udevadm control --reload</code> und das Gerät neu einstecken. Ein Browser aus einem Snap- oder
+Flatpak-Paket braucht unter Umständen eine zusätzliche Freigabe für USB, falls er das Gerät nicht anbietet.</li>
+</ul></details>
+<details><summary>Was wird geschrieben, was bleibt?</summary><ul>
+<li><b>Aktualisieren</b> schreibt nur das Programm. <b>Neu installieren</b> schreibt zusätzlich Startprogramm (Bootloader) und Aufteilung des Speichers
+(Partitionstabelle), beim Empfänger auch die Startauswahl.</li>
+<li>Der Bereich mit Einstellungen, Schlüsseln und Zählerständen (NVS) und der Datenspeicher des Empfängers werden nie beschrieben und nie gelöscht.
+Die Seite prüft jede Firmware-Datei vorher und verweigert alles, was diese Bereiche berühren würde.</li>
+<li>Die Prüfsummen in der Datei erkennen beschädigte Dateien, aber keine gefälschten. Laden Sie Firmware nur aus der offiziellen Quelle.</li>
+</ul></details>
+</div>
+</main>
+<footer>CII Flasher. Schreibt über <a href="lib/esptool-js-0.6.1/NOTICE">esptool-js 0.6.1</a> (Espressif, Apache-2.0).</footer>
+
+<script type="module">
+import { ESPLoader, Transport } from "./lib/esptool-js-0.6.1/bundle.js";
+import { validatePackage, PackageError, NVS, regions, parseTable, runningApp, appInfo, deviceVerdict, ROLE_DE }
+  from "./check.js";
+
+// Spaeter (Server-Anbindung): Adresse eines Pakets, "{role}" wird durch sender/receiver ersetzt. Leer = aus, nur Upload.
+const PACKAGE_URL = "";
+const MAX_FILE = 32 * 1024 * 1024;
+const ESPRESSIF_VID = 0x303a;
+const $ = (id) => document.getElementById(id);
+const state = { role: null, mode: null, text: null, name: "", pkg: null, busy: false };
+
+// ---- Hell/Dunkel ----
+const themeKey = "cii-flasher-theme";
+try { const t = localStorage.getItem(themeKey); if (t) document.documentElement.dataset.theme = t; } catch {}
+$("theme").onclick = () => {
+  const dark = document.documentElement.dataset.theme
+    ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = dark ? "light" : "dark";
+  try { localStorage.setItem(themeKey, document.documentElement.dataset.theme); } catch {}
+};
+
+// ---- Web Serial vorhanden? ----
+const serialOk = "serial" in navigator && window.isSecureContext;
+if (!serialOk) {
+  $("nows").hidden = false;
+  const ff = /Firefox\/(\d+)/.exec(navigator.userAgent);
+  if ("serial" in navigator || /Chrome|Edg\//.test(navigator.userAgent) || (ff && +ff[1] >= 151)) {
+    $("nowstx").textContent = "Die Seite muss über https:// oder http://localhost geöffnet werden, sonst sperrt der Browser den USB-Zugriff.";
+  }
+}
+
+// ---- Schritte ----
+function render() {
+  const pkgReady = !!state.pkg && (!state.pkg.dev || $("devok").checked);
+  $("s2").classList.toggle("off", !state.role);
+  $("s3").classList.toggle("off", !(state.role && state.mode && pkgReady));
+  $("go").disabled = !(serialOk && state.role && state.mode && pkgReady) || state.busy;
+  $("s1").classList.toggle("done", !!state.role);
+  $("s2").classList.toggle("done", !!(state.mode && pkgReady));
+  const step = !state.role ? 1 : !(state.mode && pkgReady) ? 2 : $("done").hidden ? 3 : 4;
+  for (let i = 1; i <= 4; i++) {
+    $("c" + i).className = i < step ? "ok" : i === step ? "on" : "";
+    $("c" + i).toggleAttribute("aria-current", i === step);
+  }
+  $("s4").classList.toggle("off", step !== 4);
+  $("srvrow").hidden = !PACKAGE_URL || !state.role;
+  $("s4wait").hidden = !$("done").hidden;
+}
+
+for (const r of document.querySelectorAll("input[name=role]")) r.onchange = () => { state.role = r.value; recheck(); };
+for (const r of document.querySelectorAll("input[name=mode]")) r.onchange = () => { state.mode = r.value; recheck(); };
+$("devok").onchange = render;
+
+// ---- Paket laden und pruefen ----
+const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.round(n / 1024) + " KB";
+const PART_DE = { "bootloader": "Startprogramm", "partition-table": "Aufteilung", "otadata": "Startauswahl", "app": "Programm" };
+
+async function recheck() {
+  state.pkg = null;
+  $("pkerr").hidden = true; $("pkok").hidden = true; $("devok").checked = false;
+  hideResult();
+  if (state.text && state.role) {
+    try {
+      state.pkg = await validatePackage(state.text, state.role, state.mode || "update");
+      $("t-role").textContent = ROLE_DE[state.role];
+      $("t-ver").textContent = state.pkg.version;
+      $("t-parts").textContent = state.mode ? state.pkg.parts.map((p) => PART_DE[p.name] || p.name).join(", ") : "Art wählen";
+      $("t-size").textContent = fmtSize(state.pkg.parts.reduce((s, p) => s + p.data.length, 0));
+      $("devw").hidden = !state.pkg.dev;
+      $("pkok").hidden = false;
+    } catch (e) {
+      $("pkerrt").textContent = " " + (e instanceof PackageError ? e.message : "Die Datei ließ sich nicht prüfen (" + e.message + ").");
+      $("pkerr").hidden = false;
+    }
+  }
+  render();
+}
+
+async function takeFile(f) {
+  if (!f) return;
+  if (f.size > MAX_FILE) { state.text = null; $("pkerrt").textContent = " Die Datei ist zu groß für ein Firmware-Paket."; $("pkerr").hidden = false; return; }
+  state.text = await f.text();
+  state.name = f.name;
+  $("dropt").textContent = f.name;
+  $("drops").textContent = "Andere Datei: hier klicken oder hierher ziehen";
+  recheck();
+}
+$("drop").onclick = () => $("file").click();
+$("file").onchange = () => takeFile($("file").files[0]);
+for (const ev of ["dragenter", "dragover"]) $("drop").addEventListener(ev, (e) => { e.preventDefault(); $("drop").classList.add("over"); });
+for (const ev of ["dragleave", "drop"]) $("drop").addEventListener(ev, () => $("drop").classList.remove("over"));
+$("drop").addEventListener("drop", (e) => { e.preventDefault(); takeFile(e.dataTransfer.files[0]); });
+// Kein versehentliches Oeffnen der Datei, wenn sie neben das Feld faellt.
+for (const ev of ["dragover", "drop"]) window.addEventListener(ev, (e) => e.preventDefault());
+
+// Server-Weg (aus, solange PACKAGE_URL leer ist): gleiche Pruefung wie beim Upload.
+$("srv").onclick = async () => {
+  try {
+    const r = await fetch(PACKAGE_URL.replace("{role}", state.role), { cache: "no-store" });
+    if (!r.ok) throw new Error("Server antwortet " + r.status);
+    state.text = await r.text();
+    $("dropt").textContent = "Vom Server geladen";
+  } catch (e) {
+    state.text = null;
+    $("pkerrt").textContent = " Die Firmware ließ sich nicht vom Server laden (" + e.message + ").";
+    $("pkerr").hidden = false;
+    return;
+  }
+  recheck();
+};
+
+// ---- Flashen ----
+// Register des ESP32-S3 (RTC_CNTL), wie esptool targets/esp32s3.py.
+const RTC = 0x60008000;
+const WDT_CONFIG0 = RTC + 0x98, WDT_CONFIG1 = RTC + 0x9c, WDT_WPROTECT = RTC + 0xb0, WDT_WKEY = 0x50d83aa1;
+const SWD_CONF = RTC + 0xb4, SWD_WPROTECT = RTC + 0xb8, SWD_WKEY = 0x8f1d312a, SWD_AUTO_FEED = 0x80000000;
+const OPTION1 = RTC + 0x12c, FORCE_DOWNLOAD_BOOT = 0x1;
+
+// esptool (Python) schaltet am USB-JTAG die RTC- und Super-Watchdogs vor dem Schreiben ab, esptool-js 0.6.1 nicht.
+async function disableWatchdogs(l) {
+  await l.writeReg(WDT_WPROTECT, WDT_WKEY);
+  await l.writeReg(WDT_CONFIG0, 0);
+  await l.writeReg(WDT_WPROTECT, 0);
+  await l.writeReg(SWD_WPROTECT, SWD_WKEY);
+  await l.writeReg(SWD_CONF, ((await l.readReg(SWD_CONF)) | SWD_AUTO_FEED) >>> 0);
+  await l.writeReg(SWD_WPROTECT, 0);
+}
+
+// Neustart wie `esptool --after watchdog-reset`: ein Reset ueber DTR/RTS landet an diesen Boards im Download-Modus.
+async function watchdogReset(l) {
+  try { await l.writeReg(OPTION1, 0, FORCE_DOWNLOAD_BOOT); } catch {}
+  await l.writeReg(WDT_WPROTECT, WDT_WKEY);
+  await l.writeReg(WDT_CONFIG1, 2000);
+  await l.writeReg(WDT_CONFIG0, ((1 << 31) | (5 << 28) | (1 << 8) | 2) >>> 0);
+  try { await l.writeReg(WDT_WPROTECT, 0); } catch {}  // der Reset kann schneller sein als die Antwort
+  await new Promise((r) => setTimeout(r, 500));
+}
+
+// Letzte Schranke direkt vor dem Schreiben, unabhaengig von check.js: nichts im NVS, nichts in Datenpartitionen.
+function assertWritable(fileArray) {
+  const { forbidden } = regions(state.role);
+  const span = (n) => Math.ceil(n / 4096) * 4096;  // geloescht und geschrieben wird je 4-KB-Sektor
+  for (const f of fileArray) {
+    const lo = f.address, hi = f.address + span(f.data.length);
+    for (const [flo, fhi] of [[NVS[0], NVS[1]], ...forbidden]) {
+      if (lo < fhi && flo < hi) throw new PackageError("Abgebrochen: ein Teil würde geschützte Daten überschreiben.");
+    }
+  }
+}
+
+const log = (s) => { const el = $("log"); el.textContent += s; if (el.textContent.length > 200000) el.textContent = el.textContent.slice(-150000); };
+const terminal = { clean() {}, writeLine(s) { log(s + "\n"); }, write(s) { log(s); } };
+function progress(pct, text) {
+  $("bar").style.width = pct + "%";
+  $("run").querySelector(".prog").setAttribute("aria-valuenow", String(Math.round(pct)));
+  if (text) $("st").textContent = text;
+}
+function hideResult() { $("ferr").hidden = true; $("done").hidden = true; $("morerow").hidden = true; $("who").hidden = true; }
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---- Verbinden ----
+// Beobachtet unter Firefox: der Reset in den Download-Modus klappte, danach kam kein Sync zustande;
+// Python esptool --before no-reset synchronisierte gleich danach. Vermutlich endet beim Reset der Lesestrom von Web
+// Serial (esptool-js readLoop bricht ab, jeder Sync laeuft ins Leere) oder der USB-JTAG meldet sich neu an. Deshalb je
+// Runde einen frischen Transport: Port schliessen, wieder oeffnen (ist er verschwunden, den einzigen neu
+// aufgetauchten Port gleicher VID/PID nehmen), noch einmal mit Reset (bei PID 0x1001 waehlt esptool-js selbst den USB-JTAG-Reset wie esptool
+// USBJTAGSerialReset), zuletzt ohne Reset: der Chip steht dann meist schon im Download-Modus.
+const ROUNDS = ["default_reset", "default_reset", "no_reset"];
+
+// known: Ports vor dem ersten Versuch. Ein anderes, schon bekanntes Board wird so nie genommen.
+async function findPort(port, known) {
+  const same = (p) => p.getInfo().usbVendorId === port.getInfo().usbVendorId && p.getInfo().usbProductId === port.getInfo().usbProductId;
+  for (let i = 0; i < 8; i++) {
+    const ports = await navigator.serial.getPorts();
+    if (ports.includes(port) && port.connected !== false) return port;
+    const cand = ports.filter((p) => !known.includes(p) && p.connected !== false && same(p));
+    if (cand.length === 1) { terminal.writeLine("Das Gerät hat sich am USB neu angemeldet, verbinde neu."); return cand[0]; }
+    await sleep(500);
+  }
+  return port;  // nicht eindeutig: beim alten bleiben, das Oeffnen meldet dann den Fehler
+}
+
+// Liefert {transport, loader} mit laufendem Stub. Scheitert jede Runde, rettet rescue() das Geraet aus dem
+// Download-Modus; err.restarted: das hat geklappt.
+async function connect(port) {
+  let last, transport, loader;
+  const known = await navigator.serial.getPorts();
+  for (let i = 0; i < ROUNDS.length; i++) {
+    if (i > 0) { await sleep(800); port = await findPort(port, known); }
+    progress(2, i ? `Verbinde mit dem Gerät … (Versuch ${i + 1} von ${ROUNDS.length})` : "Verbinde mit dem Gerät …");
+    transport = new Transport(port, false);
+    loader = new ESPLoader({ transport, baudrate: 115200, terminal });
+    try {
+      await loader.main(ROUNDS[i]);
+      return { transport, loader };
+    } catch (e) {
+      last = e;
+      terminal.writeLine(`Verbindungsversuch ${i + 1} (${ROUNDS[i]}) ohne Erfolg: ${e && e.message}`);
+      if (i < ROUNDS.length - 1) { try { await transport.disconnect(); } catch {} }
+    }
+  }
+  last.restarted = await rescue(transport, loader, port, known);
+  throw last;
+}
+
+// Nach dem letzten Fehlversuch steht das Geraet womoeglich im Download-Modus (unter Firefox blieb so ein Sender haengen):
+// antwortet der ROM-Lader noch, oder nach einem frischen Sync ohne Reset, per Watchdog in die App starten.
+async function rescue(transport, loader, port, known) {
+  progress(2, "Starte das Gerät wieder normal …");
+  for (const fresh of [false, true]) {
+    try {
+      if (fresh) {
+        try { await transport.disconnect(); } catch {}
+        await sleep(500);
+        transport = new Transport(await findPort(port, known), false);
+        loader = new ESPLoader({ transport, baudrate: 115200, terminal });
+        await loader.connect("no_reset", 3);  // nur Sync und Chip-Erkennung, kein Reset
+      }
+      if (loader.chip && loader.chip.CHIP_NAME === "ESP32-S3") {
+        await watchdogReset(loader);
+        terminal.writeLine("Gerät per Watchdog neu gestartet.");
+        try { await transport.disconnect(); } catch {}
+        return true;
+      }
+    } catch (e) { terminal.writeLine("Neustart ohne Erfolg: " + (e && e.message)); }
+  }
+  try { await transport.disconnect(); } catch {}
+  return false;
+}
+
+// esptool-js 0.6.1 liest das MD5-Paket nicht, das der Stub nach READ_FLASH schickt: hier abholen, sonst liegt es vor der
+// naechsten Antwort im Puffer.
+async function readFlash(l, addr, size) {
+  const d = await l.readFlash(addr, size);
+  try { await l.transport.read(1000); } catch {}
+  return d;
+}
+
+// Was laeuft auf dem Geraet? MAC, Partitionstabelle, gestartete App (beim Empfaenger ueber otadata), ihr Projektname.
+async function identify(l) {
+  const mac = await l.chip.readMac(l);
+  const table = parseTable(await readFlash(l, 0x8000, 0xc00));
+  const od = table.find((e) => e.type === "data" && e.subtype === 0 && e.size >= 0x2000);
+  const app = runningApp(table, od ? await readFlash(l, od.off, 0x2000) : null);
+  const info = app ? appInfo(await readFlash(l, app.off, 0x100)) : null;
+  return { mac, table, app, project: info ? info.project : null, version: info ? info.version : "" };
+}
+
+class Refused extends Error {}
+const REPLUG = "Bitte das Gerät kurz vom USB trennen und wieder anstecken, damit es wieder normal startet.";
+
+// Nach einer Absage: das Geraet wieder in seine App starten. Liefert den Satz fuer den Nutzer.
+async function backToApp(l) {
+  try { await watchdogReset(l); return "Das Gerät startet wieder normal."; }
+  catch (e) { terminal.writeLine("Neustart fehlgeschlagen: " + (e && e.message)); return REPLUG; }
+}
+
+const CHECK = {
+  receiver: ["Das Gerät startet von selbst neu. Nach etwa 10 Sekunden zeigt das Display wieder Werte.",
+    "Innerhalb einer Minute kommen neue Messwerte vom Sender an (Display oder Web-Seite des Empfängers).",
+    "Die Web-Seite des Empfängers öffnet mit dem bisherigen Passwort, WLAN und MQTT laufen wie vorher."],
+  sender: ["Das Gerät startet von selbst neu, die Leuchte meldet sich wieder.",
+    "Am Empfänger kommen innerhalb einer Minute wieder neue Messwerte an."],
+};
+
+function showDone(who, pkg, restarted) {
+  $("d-dev").textContent = who;
+  $("d-ver").textContent = pkg.version;
+  $("d-parts").textContent = pkg.parts.map((p) => PART_DE[p.name] || p.name).join(", ");
+  $("oktext").textContent = restarted ? "Das Gerät startet gerade neu. Das USB-Kabel zum Computer wird nicht mehr gebraucht."
+    : "Bitte das USB-Kabel kurz abziehen und wieder einstecken (oder RESET drücken), damit das Gerät die neue Firmware startet.";
+  $("d-check").replaceChildren(...CHECK[state.role].map((t) => { const li = document.createElement("li"); li.textContent = t; return li; }));
+  $("done").hidden = false; $("morerow").hidden = false;
+  $("s4").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+$("go").onclick = async () => {
+  if (state.busy || !state.pkg) return;
+  // Paket fuer die gewaehlte Art frisch pruefen (die Art kann sich nach dem Laden geaendert haben).
+  let pkg;
+  try { pkg = await validatePackage(state.text, state.role, state.mode); }
+  catch (e) { recheck(); return; }
+  if (pkg.dev && !$("devok").checked) return;
+  hideResult();
+  let port;
+  try {
+    port = await navigator.serial.requestPort({ filters: [{ usbVendorId: ESPRESSIF_VID }] });
+  } catch (e) {
+    if (e.name !== "NotFoundError") fail("Der Browser hat den Zugriff verweigert.", e.message);
+    return;   // Auswahl abgebrochen: nichts passiert
+  }
+  state.busy = true; render();
+  $("run").hidden = false; $("log").textContent = "";
+  let conn = null, stage = "connect", who = "";
+  try {
+    conn = await connect(port);
+    const loader = conn.loader;
+    stage = "check";
+    if (loader.chip.CHIP_NAME !== "ESP32-S3") { stage = "foreign"; throw new Refused("Das angeschlossene Gerät ist kein ESP32-S3 und passt nicht zu dieser Firmware."); }
+    await disableWatchdogs(loader);
+    progress(3, "Lese, was auf dem Gerät läuft …");
+    const dev = await identify(loader);
+    const v = deviceVerdict(state.role, state.mode, dev);
+    who = v.label;
+    terminal.writeLine(`Verbunden: ${v.label}, MAC ${dev.mac}, Partition ${dev.app ? dev.app.name : "keine"}, Version ${dev.version || "unbekannt"}`);
+    $("who").textContent = "Verbunden: " + v.label + (dev.version && dev.project ? `, bisher ${dev.version}` : "");
+    $("who").hidden = false;
+    if (v.refuse) throw new Refused(v.refuse);
+    if (v.confirm && !confirm(v.confirm)) throw new Refused("Abgebrochen.");
+
+    const fileArray = pkg.parts.map((p) => ({ data: p.data, address: p.address }));
+    assertWritable(fileArray);
+    const total = fileArray.reduce((s, f) => s + f.data.length, 0);
+    let before = 0;
+    stage = "write";
+    progress(5, "Schreibe die Firmware …");
+    // Nie loeschen: eraseAll bleibt false, ein Chip-Loeschen gibt es auf dieser Seite nicht.
+    await loader.writeFlash({
+      fileArray, flashMode: "keep", flashFreq: "keep", flashSize: "keep", eraseAll: false, compress: true,
+      reportProgress: (i, written, size) => {
+        const done = before + (written / size) * fileArray[i].data.length;
+        if (written === size) before += fileArray[i].data.length;
+        progress(5 + 90 * done / total, `Schreibe die Firmware … ${Math.floor(100 * done / total)} %`);
+      },
+    });
+    stage = "reset";
+    progress(97, "Starte das Gerät neu …");
+    let restarted = true;
+    try { await watchdogReset(loader); } catch (e) { restarted = false; terminal.writeLine("Neustart fehlgeschlagen: " + (e && e.message)); }
+    progress(100, "Fertig.");
+    showDone(who, pkg, restarted);
+  } catch (e) {
+    terminal.writeLine("Fehler: " + (e && e.message));
+    if (stage === "connect") {
+      fail("Das Gerät antwortet nicht.", e && e.restarted ? "Es startet wieder normal. Bitte noch einmal auf Installieren klicken. " +
+        "Hinweise stehen unter „Klappt die Verbindung nicht?“." : REPLUG + " Danach erneut auf Installieren klicken. Ein schlafender Sender " +
+        "muss vorher geweckt werden (BOOT halten, RESET kurz drücken, BOOT loslassen).");
+    } else if (stage === "foreign") {
+      fail("Nichts wurde geschrieben.", e.message + " " + REPLUG);
+    } else if (stage === "check") {
+      const back = await backToApp(conn.loader);
+      if (e instanceof Refused) fail("Nichts wurde geschrieben.", e.message + " " + back);
+      else fail("Das Gerät ließ sich nicht auslesen.", "Nichts wurde geschrieben. " + back + " Danach erneut versuchen.");
+    } else if (stage === "write") {
+      fail("Die Installation wurde unterbrochen.", e instanceof PackageError ? e.message
+        : "Das Kabel stecken lassen und einfach erneut auf Installieren klicken. Einstellungen und Kopplung sind dabei nicht in Gefahr.");
+    }
+  } finally {
+    if (conn) { try { await conn.transport.disconnect(); } catch {} }
+    state.busy = false; render();
+  }
+};
+
+function fail(head, text) {
+  $("ferrh").textContent = head;
+  $("ferrt").textContent = " " + text;
+  $("ferr").hidden = false;
+  $("st").textContent = "";
+}
+$("again").onclick = () => { $("ferr").hidden = true; $("go").click(); };
+$("more").onclick = () => {
+  state.text = null; state.pkg = null; $("file").value = "";
+  $("dropt").textContent = "Datei hierher ziehen oder auswählen";
+  $("drops").textContent = "Endung .ciifw, zum Beispiel cii-receiver-….ciifw";
+  $("run").hidden = true; progress(0, "");
+  hideResult(); recheck(); window.scrollTo({ top: 0, behavior: "smooth" });
+};
+render();
+</script>
+</body>
+</html>
