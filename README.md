@@ -5,15 +5,21 @@ ohne Installation: https://aerbi.github.io/cii-flasher/
 
 ## Was die Seite macht
 
-1. Sie wählen das Gerät (Empfänger mit Display oder Sender ohne Display) und die Art: **Aktualisieren** schreibt nur das
+1. Du wählst das Gerät (Empfänger mit Display oder Sender ohne Display) und die Art: **Aktualisieren** schreibt nur das
    Programm, **Neu installieren** zusätzlich Bootloader, Partitionstabelle und beim Empfänger die Startauswahl.
-2. Sie laden eine Firmware-Datei (`.ciifw`). Die Seite prüft sie vollständig im Browser: Format, Chip (ESP32-S3), Rolle,
+2. Du lädst eine Firmware-Datei (`.ciifw`). Die Seite prüft sie vollständig im Browser: Format, Chip (ESP32-S3), Rolle,
    Lage jedes Teils gegen die feste Speicheraufteilung, Prüfsummen.
 3. Nach dem Verbinden liest die Seite, welches Gerät angeschlossen ist und welche Firmware darauf läuft, und schreibt
    nur, wenn beides zur Datei passt. Danach startet sie das Gerät neu.
 
+Nach dem Installieren eines Senders startet die Seite ihn neu, liest sein Setup-WLAN von der USB-Konsole und zeigt
+WLAN-Name, Passwort (verdeckt, auf Knopfdruck sichtbar) und einen QR-Code. Mit **Etikett drucken** druckst du ein kleines
+Etikett (50 × 30 mm) für den Sender. Für einen Sender, der schon läuft, gibt es den Knopf **WLAN-Daten des Senders
+anzeigen**. Das Passwort bleibt in deinem Browser: kein Netz, kein Speicher, kein Protokoll; beim Schließen der Seite ist
+es weg. Gilt am Sender ein eigenes Passwort, zeigt die Seite nur diesen Hinweis.
+
 **Firmware-Dateien liegen nicht hier.** Die Seite enthält keine Firmware und lädt keine nach; die Pakete werden getrennt
-bereitgestellt. Laden Sie sie nur aus der Quelle, von der Sie Ihr Gerät haben: die Prüfsummen erkennen beschädigte
+bereitgestellt. Lade sie nur aus der Quelle, von der du dein Gerät hast: die Prüfsummen erkennen beschädigte
 Dateien, aber keine gefälschten.
 
 ## Sicherheit
@@ -52,8 +58,8 @@ diesem Ordner, dann `http://localhost:8000/`.
 Apache-2.0, siehe `LICENSE` und `NOTICE`. Copyright 2026 Alexander Erber.
 
 Enthält esptool-js 0.6.1 von Espressif (Apache-2.0, unverändert, mit pako 2.1.0 unter MIT und Zlib), siehe
-`lib/esptool-js-0.6.1/LICENSE` und `lib/esptool-js-0.6.1/NOTICE`. Gestaltung nach dem Style Guide
-"Industrial Material 3", mit Erlaubnis verwendet.
+`lib/esptool-js-0.6.1/LICENSE` und `lib/esptool-js-0.6.1/NOTICE`, und qrcode-generator 1.4.4 von Kazuhiko Arase
+(MIT, unverändert), siehe `lib/qrcode-generator-1.4.4/`.
 
 ## English
 
@@ -65,6 +71,10 @@ the package in the browser, identifies the connected device before writing and o
 **Firmware packages are not hosted here**; they are provided separately. Checksums detect damaged files, not forged ones,
 so only use packages from the source of your device.
 
+After installing a sender, the page restarts it, reads its setup WiFi from the USB console and shows the network name,
+the password (hidden until revealed) and a QR code, with a button to print a small 50 x 30 mm label. The password stays
+in the browser: no network, no storage, no log.
+
 Safety: the page never erases anything (no erase command, writes with `eraseAll: false`) and never writes the settings
 area (NVS) or the receiver's data storage; WiFi, passwords, pairing and counters survive an update.
 
@@ -73,5 +83,4 @@ too, but its port selection can be fiddly. Safari and mobile browsers lack Web S
 the USB serial device (group `dialout` or the udev rule above).
 
 Licence: Apache-2.0, see `LICENSE` and `NOTICE`. Copyright 2026 Alexander Erber. Includes esptool-js 0.6.1 by Espressif
-(Apache-2.0, bundling pako 2.1.0 under MIT and Zlib). Design based on the "Industrial Material 3" style guide, used with
-permission.
+(Apache-2.0, bundling pako 2.1.0 under MIT and Zlib) and qrcode-generator 1.4.4 by Kazuhiko Arase (MIT).

@@ -5,3 +5,6 @@ Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 This product includes esptool-js 0.6.1 by Espressif Systems, licensed under the Apache License, Version 2.0, which
 bundles pako 2.1.0 (MIT AND Zlib). See lib/esptool-js-0.6.1/LICENSE and lib/esptool-js-0.6.1/NOTICE.
+
+This product includes qrcode-generator 1.4.4 by Kazuhiko Arase, licensed under the MIT License. See
+lib/qrcode-generator-1.4.4/LICENSE and lib/qrcode-generator-1.4.4/NOTICE.

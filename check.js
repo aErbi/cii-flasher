@@ -16,7 +16,11 @@ export const LAYOUT = /*LAYOUT*/{
     ["otadata", "data", "0x10000", "0x2000"],
     ["ota_0", "app", "0x20000", "0x300000"],
     ["ota_1", "app", "0x320000", "0x300000"],
-    ["storage", "data", "0x620000", "0x200000"]]}
+    ["storage", "data", "0x620000", "0x200000"],
+    ["ota_2", "app", "0x820000", "0x200000"],
+    ["spiffs", "data", "0xa20000", "0x100000"],
+    ["smwbak", "data", "0xb20000", "0x2000"],
+    ["smwsec", "data", "0xb22000", "0x6000"]]}
 }/*END*/;
 
 // Oeffentliche Schluessel, denen die Seite traut: {"id": erste 8 Byte von sha256(pub) als Hex, "pub": Base64 des
@@ -280,3 +284,47 @@ export function deviceVerdict(role, mode, dev) {
   }
   return { label };
 }
+
+// ---- Setup-WLAN des Senders (Konsole nach dem Neustart) ----
+// Beim Start des Setup-Portals schreibt der Sender auf die USB-Konsole (ESP_LOGW, davor "W (ms) sender: "):
+//   werkseitiges Passwort:  "Setup-AP: SSID <ssid>, WPA2-Passwort <psk>, Kanal 6, http://192.168.4.1/ ..."
+//                           "WLAN-QR fuer das Etikett: WIFI:T:WPA;S:<ssid>;P:<psk>;;"
+//   eigenes Passwort aktiv: "Setup-AP: SSID <ssid>, eigenes WLAN-Passwort aktiv, Kanal 6, ..."  (der Wert steht nie im Log)
+//   ohne USB beim Start:    "Setup-AP: SSID <ssid>, Kanal 6, ... (Passwort s. Etikett)"
+// SSID: Kurzname mit den letzten 6 Hex-Zeichen der MAC; Passwort: 16 Zeichen aus A bis Z und 2 bis 9 ohne I und O.
+const W_SSID = "([A-Za-z0-9-]{1,32})";
+const W_PSK = "([A-HJ-NP-Z2-9]{16})";  // secret-ok: Muster, kein Wert
+const W_QR = new RegExp("WLAN-QR fuer das Etikett: WIFI:T:WPA;S:" + W_SSID + ";P:" + W_PSK + ";;");
+const W_AP = new RegExp("Setup-AP: SSID " + W_SSID + ", WPA2-Passwort " + W_PSK + ", Kanal ");
+const W_OWN = new RegExp("Setup-AP: SSID " + W_SSID + ", eigenes WLAN-Passwort aktiv");
+const W_LABEL = new RegExp("Setup-AP: SSID " + W_SSID + ", Kanal \\d+, .*\\(Passwort s\\. Etikett\\)");
+
+// Eine Konsolenzeile: {ssid, psk} | {ssid, own: true} | {ssid, label: true} | null.
+export function parseWifiLine(line) {
+  const s = String(line).replace(/\x1b\[[0-9;]*m/g, "");
+  let m = W_QR.exec(s) || W_AP.exec(s);  // beide Zeilen nennen dasselbe; eine reicht, falls die andere verloren ging
+  if (m) return { ssid: m[1], psk: m[2] };
+  if ((m = W_OWN.exec(s))) return { ssid: m[1], own: true };
+  if ((m = W_LABEL.exec(s))) return { ssid: m[1], label: true };
+  return null;
+}
+
+// Sammelt Text in Stuecken (USB-Pakete trennen Zeilen beliebig) und liefert das erste Ergebnis von parseWifiLine.
+// Haelt hoechstens eine angefangene Zeile (512 Zeichen); alles andere wird sofort verworfen.
+export function wifiScanner() {
+  let buf = "";
+  return (chunk) => {
+    buf += chunk;
+    const lines = buf.split(/\r?\n/);
+    buf = lines.pop().slice(-512);
+    for (const l of lines) {
+      const r = parseWifiLine(l);
+      if (r) { buf = ""; return r; }
+    }
+    return null;
+  };
+}
+
+// Text des WLAN-QR-Codes (ZXing-Format): \ ; , : " in Name und Passwort mit Backslash schuetzen.
+export const wifiEscape = (s) => String(s).replace(/[\\;,:"]/g, "\\$&");
+export const wifiQrText = (ssid, psk) => `WIFI:T:WPA;S:${wifiEscape(ssid)};P:${wifiEscape(psk)};;`;

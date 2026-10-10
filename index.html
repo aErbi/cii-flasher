@@ -6,7 +6,6 @@
 <title>CII Flasher</title>
 <meta name="description" content="Firmware für den Sender und den Empfänger im Browser installieren oder aktualisieren.">
 <style>
-/* Gestaltung nach dem Style Guide "Industrial Material 3", mit Erlaubnis verwendet. */
 :root{color-scheme:light dark;--b:7px;--bl:14px;--bs:5px;
 --hex:polygon(var(--b) 0,100% 0,100% calc(100% - var(--b)),calc(100% - var(--b)) 100%,0 100%,0 var(--b));
 --hexl:polygon(var(--bl) 0,100% 0,100% calc(100% - var(--bl)),calc(100% - var(--bl)) 100%,0 100%,0 var(--bl));
@@ -100,6 +99,23 @@ svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-lin
 footer{max-width:860px;margin:0 auto;padding:0 16px 40px;color:var(--mut);font-size:14px}
 @media(max-width:520px){body{font-size:16px}.opt .ill{width:72px;height:56px}.btn.big{width:100%}}
 @media(prefers-reduced-motion:reduce){.prog i{transition:none}}
+.wqr{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.wqr>.stack{flex:1;min-width:200px;margin:0}
+svg.qr{width:184px;height:184px;flex:none;stroke:none}
+svg.qr rect{fill:#fff}svg.qr path{fill:#000}
+#label{display:none}
+#wst:empty{display:none}
+/* Drucken heisst hier nur: das Etikett (50 x 30 mm). Der Inhalt entsteht erst beim Klick und verschwindet danach. */
+@media print{
+@page{size:50mm 30mm;margin:0}
+html,body{background:#fff;min-height:0}
+body>*:not(#label){display:none!important}
+#label{display:flex!important;width:50mm;height:30mm;padding:2mm;gap:2mm;align-items:center;color:#000;font:6.5pt/1.3 var(--sans);overflow:hidden}
+#label svg.qr{width:22mm;height:22mm}
+#label>div{min-width:0;flex:1}
+#label b{display:block;font-size:7pt;margin-bottom:1mm}
+#label .m{font:600 6.5pt/1.3 var(--mono);overflow-wrap:anywhere}
+}
 </style>
 </head>
 <body>
@@ -118,13 +134,13 @@ footer{max-width:860px;margin:0 auto;padding:0 16px 40px;color:var(--mut);font-s
 <main>
 <div class="stack" style="margin-top:24px">
 <h1>Firmware installieren</h1>
-<p>Diese Seite installiert die Firmware auf Ihrem Sender oder Empfänger, direkt aus dem Browser. Sie brauchen
+<p>Diese Seite installiert die Firmware auf deinem Sender oder Empfänger, direkt aus dem Browser. Du brauchst
 <b>Google Chrome, Chromium oder Microsoft Edge auf einem Computer</b> (Windows, macOS oder Linux), ein <b>USB-Kabel</b> und die
 Firmware-Datei (<code>.ciifw</code>). Firefox ab Version 151 geht auch, dort ist die Auswahl des Geräts aber hakelig.</p>
 <div class="note ok"><svg><use href="#i-ok"/></svg><div><b>Einstellungen und Kopplung bleiben erhalten.</b>
 Die Seite löscht nie etwas: WLAN, Passwörter, Zählerschlüssel, Kopplung und Zählerstände bleiben auf dem Gerät.</div></div>
 <div class="note bad" id="nows" hidden><svg><use href="#i-bad"/></svg><div><b>Dieser Browser kann leider keine Geräte über USB ansprechen.</b>
-<span id="nowstx">Bitte öffnen Sie diese Seite in Google Chrome, Chromium oder Microsoft Edge auf einem Computer (ein Firefox ab
+<span id="nowstx">Bitte öffne diese Seite in Google Chrome, Chromium oder Microsoft Edge auf einem Computer (ein Firefox ab
 Version 151 geht auch). Safari und ältere Firefox-Versionen unterstützen das nötige Web Serial nicht, Tablets und Telefone ebenfalls nicht.</span></div></div>
 </div>
 
@@ -169,13 +185,14 @@ Version 151 geht auch). Safari und ältere Firefox-Versionen unterstützen das n
 <div class="tile"><div class="lbl">Herkunft</div><div class="v" id="t-sig"></div></div></div>
 <div class="note warn" id="devw" hidden><svg><use href="#i-warn"/></svg><div class="stack" style="margin:0">
 <div><span class="dev">ENTWICKLERSTAND</span><br>Diese Firmware ist nur für Tests gedacht und nicht für den Alltag freigegeben. Nur verwenden, wenn
-Sie das ausdrücklich so vorhaben.</div>
+du das ausdrücklich so vorhast.</div>
 <label class="ck"><input type="checkbox" id="devok"> Ich will diesen Entwicklerstand trotzdem installieren.</label></div></div>
 <div class="note warn" id="unsw" hidden><svg><use href="#i-warn"/></svg><div class="stack" style="margin:0">
-<div><b>Nicht signiert.</b><br>Diese Seite kann nicht prüfen, wer das Paket gebaut hat. Nur verwenden, wenn Sie die Datei selbst
-gebaut oder von einer Quelle haben, der Sie vertrauen.</div>
+<div><b>Nicht signiert.</b><br>Diese Seite kann nicht prüfen, wer das Paket gebaut hat. Nur verwenden, wenn du die Datei selbst
+gebaut oder von einer Quelle hast, der du vertraust.</div>
 <label class="ck"><input type="checkbox" id="unsok"> Ich will dieses unsignierte Paket trotzdem installieren.</label></div></div>
 </div>
+<p class="cap" id="why" aria-live="polite"></p>
 </div></section>
 
 <section class="card off" id="s3"><div class="in stack">
@@ -183,7 +200,8 @@ gebaut oder von einer Quelle haben, der Sie vertrauen.</div>
 <ol style="margin:0;padding-left:22px">
 <li>Gerät mit dem USB-Kabel an den Computer anschließen.</li>
 <li>Auf <b>Installieren</b> klicken. Der Browser zeigt eine Liste: das Gerät wählen (meist „USB JTAG/serial debug unit“) und <b>Verbinden</b> klicken.
-Die Seite liest dann zuerst, welches Gerät angeschlossen ist, und schreibt nur, wenn es zur Firmware passt.</li>
+Die Seite liest dann zuerst, welches Gerät angeschlossen ist, und schreibt nur, wenn es zur Firmware passt.
+Steht das Gerät nicht in der Liste, schließ sie, drück am Gerät kurz die Taste RESET und klick noch einmal auf Installieren.</li>
 <li>Warten, bis „Fertig“ erscheint (etwa eine Minute). Das Kabel bis dahin nicht abziehen.</li>
 </ol>
 <div class="row"><button class="btn pri big" id="go" type="button" disabled>Installieren</button></div>
@@ -192,8 +210,10 @@ Die Seite liest dann zuerst, welches Gerät angeschlossen ist, und schreibt nur,
 <div class="note bad" id="ferr" hidden><svg><use href="#i-bad"/></svg><div class="stack" style="margin:0"><div><b id="ferrh">Das hat nicht geklappt.</b><span id="ferrt"></span></div>
 <div class="row"><button class="btn" id="again" type="button">Erneut versuchen</button></div></div></div>
 <details><summary>Klappt die Verbindung nicht?</summary><ul>
-<li><b>Gerät wecken:</b> Der Sender schläft zwischen zwei Messungen und ist dann nicht erreichbar. Taste BOOT gedrückt halten, Taste RESET kurz drücken,
-BOOT loslassen. Danach erneut auf Installieren klicken.</li>
+<li><b>Gerät wecken:</b> Der Sender schläft zwischen zwei Messungen und ist dann nicht erreichbar. Drück kurz die Taste RESET: nach dem
+Neustart merkt er das USB-Kabel und bleibt wach. Danach erneut auf Installieren klicken.</li>
+<li><b>Gerät ohne Firmware oder ganz gelöscht:</b> Taste BOOT gedrückt halten, Taste RESET kurz drücken, BOOT loslassen. Danach erneut
+auf Installieren klicken.</li>
 <li><b>Kabel:</b> Manche USB-Kabel laden nur und übertragen keine Daten. Ein anderes Kabel probieren, am besten direkt am Computer ohne Hub.</li>
 <li><b>Anderes Programm:</b> Ein offenes Programm, das den Anschluss schon benutzt (Arduino, ein serieller Monitor, ein zweiter Browser-Tab), vorher schließen.</li>
 <li><b>Linux:</b> siehe „Systemvoraussetzungen“ unten (Berechtigung für den USB-Anschluss).</li>
@@ -220,6 +240,32 @@ WLAN, Passwörter, Zählerschlüssel, Kopplung und Zählerstände wurden nicht a
 <p class="cap" id="s4wait">Hier erscheint das Ergebnis.</p>
 <div class="row" id="morerow" hidden><button class="btn" id="more" type="button">Weiteres Gerät installieren</button></div>
 </div></section>
+
+<section class="card" id="sw"><div class="in stack">
+<div class="head"><span class="num"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0M12 19.5v.5"/></svg></span>
+<h2>Setup-WLAN des Senders</h2></div>
+<p class="cap">Jeder Sender hat ein eigenes Passwort für sein Setup-WLAN. Nach dem Installieren eines Senders liest die Seite
+es aus und zeigt es hier als QR-Code. Für einen Sender, der schon läuft: per USB anschließen und hier klicken.</p>
+<div class="row"><button class="btn" id="wgo" type="button">WLAN-Daten des Senders anzeigen</button>
+<button class="btn gh" id="wstop" type="button" hidden>Abbrechen</button></div>
+<div class="prog" id="wprog" hidden><i id="wbar"></i></div>
+<p class="st" id="wst" aria-live="polite"></p>
+<div class="note info" id="whint" hidden><svg><use href="#i-info"/></svg><div><b>Noch nichts empfangen.</b>
+Ein neuer Sender meldet sich von selbst. Ist dieser Sender schon gekoppelt, öffnet er sein Setup-WLAN nur auf Wunsch: halte
+jetzt die grüne Taste BOOT 10 Sekunden gedrückt, bis die Leuchte orange blinkt. Die Seite liest weiter.</div></div>
+<div class="note warn" id="wmsg" hidden><svg><use href="#i-warn"/></svg><div><b id="wmsgh"></b><span id="wmsgt"></span></div></div>
+<div id="wres" class="stack" hidden>
+<div class="wqr"><div id="wqr"></div><div class="stack">
+<div class="tile"><div class="lbl">WLAN-Name</div><div class="v" id="wssid"></div></div>
+<div class="tile"><div class="lbl">Passwort</div><div class="v" id="wpsk"></div></div>
+<div class="row"><button class="btn" id="wshow" type="button" aria-pressed="false">Passwort zeigen</button>
+<button class="btn pri" id="wprint" type="button">Etikett drucken</button>
+<button class="btn" id="wsave" type="button">QR-Code als Bild speichern</button></div>
+<p class="cap">Im Bild steckt das WLAN-Passwort. Die Datei bleibt im Download-Ordner bzw. in deinen Fotos; wer sie hat, kann sich mit dem Setup-WLAN verbinden. Lösch sie, wenn du sie nicht mehr brauchst.</p></div></div>
+<div class="note info"><svg><use href="#i-info"/></svg><div><b>Klebe das Etikett auf den Sender.</b>
+Wer es hat, kann sich mit dem Setup-WLAN verbinden. Zum Einrichten scannst du den QR-Code mit der Handy-Kamera.</div></div>
+</div>
+</div></section>
 </div>
 
 <div class="stack" style="margin-top:32px">
@@ -228,7 +274,7 @@ WLAN, Passwörter, Zählerschlüssel, Kopplung und Zählerstände wurden nicht a
 Version 151 funktioniert auch, die Auswahl des Geräts ist dort aber hakelig. Safari, ältere Firefox-Versionen sowie Browser auf Tablets und Telefonen können keine Geräte über USB ansprechen (Web Serial fehlt).</li>
 <li><b>Windows 10 und 11:</b> kein Treiber nötig, das Gerät meldet sich als serielles USB-Gerät.</li>
 <li><b>macOS:</b> kein Treiber nötig.</li>
-<li><b>Linux:</b> Ihr Benutzer braucht Zugriff auf den USB-Anschluss. Meist genügt die Gruppe <code>dialout</code> (Debian, Ubuntu, Fedora) bzw.
+<li><b>Linux:</b> Dein Benutzer braucht Zugriff auf den USB-Anschluss. Meist genügt die Gruppe <code>dialout</code> (Debian, Ubuntu, Fedora) bzw.
 <code>uucp</code> (Arch): <code>sudo usermod -aG dialout $USER</code>, danach ab- und wieder anmelden. Alternativ eine udev-Regel für das Gerät
 (Hersteller-ID 303a): <code>SUBSYSTEMS=="usb", ATTRS{idVendor}=="303a", MODE="0660", TAG+="uaccess"</code> in
 <code>/etc/udev/rules.d/60-cii-flasher.rules</code>, dann <code>sudo udevadm control --reload</code> und das Gerät neu einstecken. Ein Browser aus einem Snap- oder
@@ -239,23 +285,26 @@ Flatpak-Paket braucht unter Umständen eine zusätzliche Freigabe für USB, fall
 (Partitionstabelle), beim Empfänger auch die Startauswahl.</li>
 <li>Der Bereich mit Einstellungen, Schlüsseln und Zählerständen (NVS) und der Datenspeicher des Empfängers werden nie beschrieben und nie gelöscht.
 Die Seite prüft jede Firmware-Datei vorher und verweigert alles, was diese Bereiche berühren würde.</li>
-<li>Die Prüfsummen in der Datei erkennen beschädigte Dateien, aber keine gefälschten. Laden Sie Firmware nur aus der offiziellen Quelle.</li>
+<li>Die Prüfsummen in der Datei erkennen beschädigte Dateien, aber keine gefälschten. Lade Firmware nur aus der offiziellen Quelle.</li>
 </ul></details>
 </div>
 </main>
-<footer>CII Flasher. Schreibt über <a href="lib/esptool-js-0.6.1/NOTICE">esptool-js 0.6.1</a> (Espressif, Apache-2.0).</footer>
+<footer>CII Flasher. Schreibt über <a href="lib/esptool-js-0.6.1/NOTICE">esptool-js 0.6.1</a> (Espressif, Apache-2.0),
+QR-Codes mit <a href="lib/qrcode-generator-1.4.4/NOTICE">qrcode-generator 1.4.4</a> (Kazuhiko Arase, MIT).</footer>
+<div id="label" aria-hidden="true"></div>
 
+<script src="lib/qrcode-generator-1.4.4/qrcode.js" integrity="sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k"></script>
 <script type="module">
 import { ESPLoader, Transport } from "./lib/esptool-js-0.6.1/bundle.js";
-import { validatePackage, PackageError, NVS, regions, parseTable, runningApp, appInfo, deviceVerdict, ROLE_DE }
-  from "./check.js";
+import { validatePackage, PackageError, NVS, regions, parseTable, runningApp, appInfo, deviceVerdict, ROLE_DE,
+  wifiScanner, wifiQrText } from "./check.js";
 
 // Spaeter (Server-Anbindung): Adresse eines Pakets, "{role}" wird durch sender/receiver ersetzt. Leer = aus, nur Upload.
 const PACKAGE_URL = "";
 const MAX_FILE = 32 * 1024 * 1024;
 const ESPRESSIF_VID = 0x303a;
 const $ = (id) => document.getElementById(id);
-const state = { role: null, mode: null, text: null, name: "", pkg: null, busy: false };
+const state = { role: null, mode: null, text: null, name: "", pkg: null, busy: false, checking: false };
 
 // ---- Hell/Dunkel ----
 const themeKey = "cii-flasher-theme";
@@ -278,11 +327,30 @@ if (!serialOk) {
 }
 
 // ---- Schritte ----
+// Was fehlt noch fuer Schritt 3? Einzige Stelle, an der die Freigabe aus den Eingaben folgt; jede Aenderung ruft render().
+// Die beiden Haken gehoeren zur Datei: nur eine neue Datei setzt sie zurueck, nicht ein Wechsel von Geraet oder Art
+// (Eigentuemer 2026-10-11: nach dem Haken die Art gewaehlt, Haken weg, Schritt 3 gesperrt).
+function missing() {
+  const m = [];
+  if (!state.role) return ["das Gerät wählen"];
+  if (!state.mode) m.push("die Art wählen (Aktualisieren oder Neu installieren)");
+  if (!state.text) m.push("die Firmware-Datei wählen");
+  else if (state.checking) m.push("kurz warten, die Datei wird geprüft");
+  else if (!state.pkg) m.push("eine passende Firmware-Datei wählen");
+  else {
+    if (state.pkg.dev && !$("devok").checked) m.push("den Haken beim Entwicklerstand setzen");
+    if (!state.pkg.signed && !$("unsok").checked) m.push("den Haken bei „Nicht signiert“ setzen");
+  }
+  return m;
+}
+
 function render() {
-  const pkgReady = !!state.pkg && (!state.pkg.dev || $("devok").checked) && (state.pkg.signed || $("unsok").checked);
+  const m = missing(), pkgReady = !!state.pkg && m.length === 0;
+  $("why").textContent = m.length ? "Für Schritt 3 fehlt noch: " + m.join(", ") + "." : "";
   $("s2").classList.toggle("off", !state.role);
-  $("s3").classList.toggle("off", !(state.role && state.mode && pkgReady));
-  $("go").disabled = !(serialOk && state.role && state.mode && pkgReady) || state.busy;
+  $("s3").classList.toggle("off", !pkgReady);
+  $("go").disabled = !(serialOk && pkgReady) || state.busy;
+  $("wgo").disabled = !serialOk || state.busy;
   $("s1").classList.toggle("done", !!state.role);
   $("s2").classList.toggle("done", !!(state.mode && pkgReady));
   const step = !state.role ? 1 : !(state.mode && pkgReady) ? 2 : $("done").hidden ? 3 : 4;
@@ -297,6 +365,15 @@ function render() {
 
 for (const r of document.querySelectorAll("input[name=role]")) r.onchange = () => { state.role = r.value; recheck(); };
 for (const r of document.querySelectorAll("input[name=mode]")) r.onchange = () => { state.mode = r.value; recheck(); };
+// Der Browser stellt beim Neuladen (und aus dem Zurueck-Cache) die gewaehlten Knoepfe wieder her, ohne "change" zu feuern:
+// ohne Abgleich sah der Nutzer "Neu installieren" gewaehlt, die Seite verlangte trotzdem die Art (Eigentuemer 2026-10-11).
+function syncInputs() {
+  const r = document.querySelector("input[name=role]:checked"), m = document.querySelector("input[name=mode]:checked");
+  state.role = r ? r.value : null;
+  state.mode = m ? m.value : null;
+  recheck();
+}
+addEventListener("pageshow", syncInputs);
 $("devok").onchange = render;
 $("unsok").onchange = render;
 
@@ -304,13 +381,27 @@ $("unsok").onchange = render;
 const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.round(n / 1024) + " KB";
 const PART_DE = { "bootloader": "Startprogramm", "partition-table": "Aufteilung", "otadata": "Startauswahl", "app": "Programm" };
 
+// Neue Datei: Haken zuruecksetzen (sie bestaetigen genau diese Datei).
+function newFile(text) {
+  state.text = text;
+  $("devok").checked = false; $("unsok").checked = false;
+}
+
+let checkGen = 0;
 async function recheck() {
-  state.pkg = null;
-  $("pkerr").hidden = true; $("pkok").hidden = true; $("devok").checked = false; $("unsok").checked = false;
+  const gen = ++checkGen;  // eine spaetere Pruefung gewinnt, auch wenn eine fruehere langsamer fertig wird
+  state.pkg = null; state.checking = false;
+  $("pkerr").hidden = true; $("pkok").hidden = true;
   hideResult();
   if (state.text && state.role) {
+    state.checking = true; render();
+    let pkg = null, err = null;
+    try { pkg = await validatePackage(state.text, state.role, state.mode || "update"); } catch (e) { err = e; }
+    if (gen !== checkGen) return;
+    state.checking = false;
     try {
-      state.pkg = await validatePackage(state.text, state.role, state.mode || "update");
+      if (err) throw err;
+      state.pkg = pkg;
       $("t-role").textContent = ROLE_DE[state.role];
       $("t-ver").textContent = state.pkg.version;
       $("t-parts").textContent = state.mode ? state.pkg.parts.map((p) => PART_DE[p.name] || p.name).join(", ") : "Art wählen";
@@ -329,8 +420,8 @@ async function recheck() {
 
 async function takeFile(f) {
   if (!f) return;
-  if (f.size > MAX_FILE) { state.text = null; $("pkerrt").textContent = " Die Datei ist zu groß für ein Firmware-Paket."; $("pkerr").hidden = false; return; }
-  state.text = await f.text();
+  if (f.size > MAX_FILE) { newFile(null); recheck(); $("pkerrt").textContent = " Die Datei ist zu groß für ein Firmware-Paket."; $("pkerr").hidden = false; return; }
+  newFile(await f.text());
   state.name = f.name;
   $("dropt").textContent = f.name;
   $("drops").textContent = "Andere Datei: hier klicken oder hierher ziehen";
@@ -349,10 +440,10 @@ $("srv").onclick = async () => {
   try {
     const r = await fetch(PACKAGE_URL.replace("{role}", state.role), { cache: "no-store" });
     if (!r.ok) throw new Error("Server antwortet " + r.status);
-    state.text = await r.text();
+    newFile(await r.text());
     $("dropt").textContent = "Vom Server geladen";
   } catch (e) {
-    state.text = null;
+    newFile(null); recheck();
     $("pkerrt").textContent = " Die Firmware ließ sich nicht vom Server laden (" + e.message + ").";
     $("pkerr").hidden = false;
     return;
@@ -416,17 +507,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Runde einen frischen Transport: Port schliessen, wieder oeffnen (ist er verschwunden, den einzigen neu
 // aufgetauchten Port gleicher VID/PID nehmen), noch einmal mit Reset (bei PID 0x1001 waehlt esptool-js selbst den USB-JTAG-Reset wie esptool
 // USBJTAGSerialReset), zuletzt ohne Reset: der Chip steht dann meist schon im Download-Modus.
-const ROUNDS = ["default_reset", "default_reset", "no_reset"];
+// Eigentuemer 2026-10-11 (frisch geloeschte Boards, der Sender brauchte BOOT+RESET von Hand): zwei Runden mehr, und ab der
+// dritten wartet findPort laenger auf einen wieder auftauchenden Port (Neuanmeldung, Sender zwischen zwei Messungen).
+const ROUNDS = ["default_reset", "default_reset", "no_reset", "default_reset", "no_reset"];
+const PORT_WAIT = [4000, 4000, 10000, 10000, 10000];
 
 // known: Ports vor dem ersten Versuch. Ein anderes, schon bekanntes Board wird so nie genommen.
-async function findPort(port, known) {
+async function findPort(port, known, step = 500, wait = 4000) {
   const same = (p) => p.getInfo().usbVendorId === port.getInfo().usbVendorId && p.getInfo().usbProductId === port.getInfo().usbProductId;
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < wait / step; i++) {
     const ports = await navigator.serial.getPorts();
     if (ports.includes(port) && port.connected !== false) return port;
     const cand = ports.filter((p) => !known.includes(p) && p.connected !== false && same(p));
     if (cand.length === 1) { terminal.writeLine("Das Gerät hat sich am USB neu angemeldet, verbinde neu."); return cand[0]; }
-    await sleep(500);
+    await sleep(step);
   }
   return port;  // nicht eindeutig: beim alten bleiben, das Oeffnen meldet dann den Fehler
 }
@@ -437,8 +531,9 @@ async function connect(port) {
   let last, transport, loader;
   const known = await navigator.serial.getPorts();
   for (let i = 0; i < ROUNDS.length; i++) {
-    if (i > 0) { await sleep(800); port = await findPort(port, known); }
-    progress(2, i ? `Verbinde mit dem Gerät … (Versuch ${i + 1} von ${ROUNDS.length})` : "Verbinde mit dem Gerät …");
+    if (i > 0) { await sleep(800); port = await findPort(port, known, 500, PORT_WAIT[i]); }
+    progress(2, !i ? "Verbinde mit dem Gerät …" : i < 2 ? `Verbinde mit dem Gerät … (Versuch ${i + 1} von ${ROUNDS.length})`
+      : `Das Gerät antwortet noch nicht, die Seite versucht es weiter (Versuch ${i + 1} von ${ROUNDS.length}, bis zu einer Minute).`);
     transport = new Transport(port, false);
     loader = new ESPLoader({ transport, baudrate: 115200, terminal });
     try {
@@ -499,6 +594,10 @@ async function identify(l) {
 
 class Refused extends Error {}
 const REPLUG = "Bitte das Gerät kurz vom USB trennen und wieder anstecken, damit es wieder normal startet.";
+// Erst wenn wirklich noetig (Verbinden gescheitert): Schritt fuer Schritt, das Einfache zuerst.
+const WAKE = "So geht es weiter: 1. Drück am Gerät kurz die Taste RESET und klick dann erneut auf Installieren. " +
+  "2. Klappt das nicht (vor allem bei einem Gerät ganz ohne Firmware): Halte die Taste BOOT gedrückt, drück kurz RESET, " +
+  "lass BOOT los und klick erneut auf Installieren. 3. Hilft auch das nicht: ein anderes USB-Kabel nehmen, direkt am Computer.";
 
 // Nach einer Absage: das Geraet wieder in seine App starten. Liefert den Satz fuer den Nutzer.
 async function backToApp(l) {
@@ -511,7 +610,8 @@ const CHECK = {
     "Innerhalb einer Minute kommen neue Messwerte vom Sender an (Display oder Web-Seite des Empfängers).",
     "Die Web-Seite des Empfängers öffnet mit dem bisherigen Passwort, WLAN und MQTT laufen wie vorher."],
   sender: ["Das Gerät startet von selbst neu, die Leuchte meldet sich wieder.",
-    "Am Empfänger kommen innerhalb einer Minute wieder neue Messwerte an."],
+    "Am Empfänger kommen innerhalb einer Minute wieder neue Messwerte an.",
+    "Unter „Setup-WLAN des Senders“ erscheint gleich der QR-Code. Druck das Etikett und kleb es auf den Sender."],
 };
 
 function showDone(who, pkg, restarted) {
@@ -533,7 +633,7 @@ $("go").onclick = async () => {
   catch (e) { recheck(); return; }
   if (pkg.dev && !$("devok").checked) return;
   if (!pkg.signed && !$("unsok").checked) return;
-  hideResult();
+  hideResult(); wipeWifi();
   let port;
   try {
     port = await navigator.serial.requestPort({ filters: [{ usbVendorId: ESPRESSIF_VID }] });
@@ -543,7 +643,7 @@ $("go").onclick = async () => {
   }
   state.busy = true; render();
   $("run").hidden = false; $("log").textContent = "";
-  let conn = null, stage = "connect", who = "";
+  let conn = null, stage = "connect", who = "", after = null;
   try {
     conn = await connect(port);
     const loader = conn.loader;
@@ -577,16 +677,16 @@ $("go").onclick = async () => {
     });
     stage = "reset";
     progress(97, "Starte das Gerät neu …");
+    const known = await navigator.serial.getPorts();  // vor dem Neustart: danach meldet sich der Sender evtl. neu an
     let restarted = true;
     try { await watchdogReset(loader); } catch (e) { restarted = false; terminal.writeLine("Neustart fehlgeschlagen: " + (e && e.message)); }
     progress(100, "Fertig.");
     showDone(who, pkg, restarted);
+    if (state.role === "sender" && restarted) after = { port: conn.transport.device, known };
   } catch (e) {
     terminal.writeLine("Fehler: " + (e && e.message));
     if (stage === "connect") {
-      fail("Das Gerät antwortet nicht.", e && e.restarted ? "Es startet wieder normal. Bitte noch einmal auf Installieren klicken. " +
-        "Hinweise stehen unter „Klappt die Verbindung nicht?“." : REPLUG + " Danach erneut auf Installieren klicken. Ein schlafender Sender " +
-        "muss vorher geweckt werden (BOOT halten, RESET kurz drücken, BOOT loslassen).");
+      fail("Das Gerät antwortet nicht.", (e && e.restarted ? "Es startet wieder normal. " : "") + WAKE);
     } else if (stage === "foreign") {
       fail("Nichts wurde geschrieben.", e.message + " " + REPLUG);
     } else if (stage === "check") {
@@ -599,6 +699,7 @@ $("go").onclick = async () => {
     }
   } finally {
     if (conn) { try { await conn.transport.disconnect(); } catch {} }
+    if (after) await readWifi(after.port, after.known);
     state.busy = false; render();
   }
 };
@@ -611,12 +712,233 @@ function fail(head, text) {
 }
 $("again").onclick = () => { $("ferr").hidden = true; $("go").click(); };
 $("more").onclick = () => {
-  state.text = null; state.pkg = null; $("file").value = "";
+  wipeWifi();
+  newFile(null); state.pkg = null; $("file").value = "";
   $("dropt").textContent = "Datei hierher ziehen oder auswählen";
   $("drops").textContent = "Endung .ciifw, zum Beispiel cii-receiver-….ciifw";
   $("run").hidden = true; progress(0, "");
   hideResult(); recheck(); window.scrollTo({ top: 0, behavior: "smooth" });
 };
+// ---- Setup-WLAN des Senders ----
+// Passwort und QR-Code leben nur in dieser Seite (Variable wifi und DOM): kein Browser-Speicher, kein
+// Netz, nicht ins Protokoll, nicht in die Konsole, nicht in Fehlertexte. Rohzeilen des Senders gehen nirgends hin.
+// Weg beim naechsten Installieren, bei "Weiteres Geraet", beim naechsten Lesen und beim Verlassen der Seite.
+// Ein frischer Sender wiederholt seine Zeilen alle 3 s (sender.cpp, pt::wifi_lines_due); der Hinweis auf BOOT 10 s gilt
+// nur einem schon gekoppelten Sender und kommt deshalb erst nach 30 s.
+const WIFI_HINT_MS = 30000, WIFI_MAX_MS = 90000, WIFI_LOST_MS = 15000;
+const DOTS = "•".repeat(16);
+let wifi = null, wifiStop = false;
+
+function wipeWifi() {
+  wifi = null;
+  $("wres").hidden = true; $("whint").hidden = true; $("wmsg").hidden = true;
+  $("wqr").replaceChildren(); $("label").replaceChildren();
+  $("wssid").textContent = ""; $("wpsk").textContent = ""; $("wst").textContent = "";  // secret-ok: leert die Anzeige
+  $("wshow").setAttribute("aria-pressed", "false"); $("wshow").textContent = "Passwort zeigen";
+}
+addEventListener("pagehide", wipeWifi);
+
+function wifiMsg(head, text) {
+  $("wst").textContent = "";
+  $("wmsgh").textContent = head;
+  $("wmsgt").textContent = text ? " " + text : "";
+  $("wmsg").hidden = false;
+}
+
+// QR-Code als SVG (Fehlerkorrektur M, 4 Module Rand), nur ueber DOM-Methoden gebaut.
+function qrSvg(text) {
+  const q = qrcode(0, "M");
+  q.addData(text);
+  q.make();
+  const n = q.getModuleCount(), m = 4, NS = "http://www.w3.org/2000/svg";
+  let d = "";
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c + m} ${r + m}h1v1h-1z`;
+  const svg = document.createElementNS(NS, "svg"), bg = document.createElementNS(NS, "rect"), p = document.createElementNS(NS, "path");
+  svg.setAttribute("viewBox", `0 0 ${n + 2 * m} ${n + 2 * m}`);
+  svg.setAttribute("class", "qr");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "QR-Code für das Setup-WLAN");
+  svg.setAttribute("shape-rendering", "crispEdges");
+  bg.setAttribute("width", "100%");
+  bg.setAttribute("height", "100%");
+  p.setAttribute("d", d);
+  svg.append(bg, p);
+  return svg;
+}
+
+function showWifi(r) {
+  wipeWifi();
+  if (r.own) {
+    wifiMsg("Für diesen Sender gilt ein eigenes WLAN-Passwort.", `WLAN-Name: ${r.ssid}. Das Passwort hast du selbst festgelegt; ` +
+      "der Sender zeigt es nirgends an. Vergessen? Halte BOOT beim Einschalten 30 Sekunden gedrückt, dann gilt wieder das " +
+      "Passwort vom Etikett, und lies es hier noch einmal aus.");
+    return;
+  }
+  if (r.label) {
+    wifiMsg("Der Sender hat sein Passwort nicht ausgegeben.", `WLAN-Name: ${r.ssid}. Lass ihn am USB-Kabel und klick noch einmal ` +
+      "auf „WLAN-Daten des Senders anzeigen“.");
+    return;
+  }
+  wifi = { ssid: r.ssid, psk: r.psk };
+  $("wssid").textContent = wifi.ssid;
+  $("wpsk").textContent = DOTS;
+  $("wqr").append(qrSvg(wifiQrText(wifi.ssid, wifi.psk)));
+  $("wres").hidden = false;
+  $("sw").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+$("wshow").onclick = () => {
+  if (!wifi) return;
+  const on = $("wshow").getAttribute("aria-pressed") !== "true";
+  $("wpsk").textContent = on ? wifi.psk : DOTS;
+  $("wshow").setAttribute("aria-pressed", String(on));
+  $("wshow").textContent = on ? "Passwort verbergen" : "Passwort zeigen";
+};
+
+// Etikett: entsteht erst hier und verschwindet nach dem Drucken wieder (CSS @media print zeigt nur #label).
+$("wprint").onclick = () => {
+  if (!wifi) return;
+  const el = (tag, cls, t) => { const e = document.createElement(tag); if (cls) e.className = cls; e.textContent = t; return e; };
+  const box = document.createElement("div");
+  box.append(el("b", "", "Sender Setup-WLAN"), el("div", "", "WLAN"), el("div", "m", wifi.ssid), el("div", "", "Passwort"),
+    el("div", "m", wifi.psk));
+  $("label").replaceChildren(qrSvg(wifiQrText(wifi.ssid, wifi.psk)), box);
+  window.print();
+};
+addEventListener("afterprint", () => $("label").replaceChildren());
+
+// QR-Code als PNG speichern (Eigentuemer 2026-10-10, Hinweis neben dem Knopf): Bild nur im Speicher gebaut, Objekt-URL gleich wieder frei.
+$("wsave").onclick = () => {
+  if (!wifi) return;
+  const q = qrcode(0, "M");
+  q.addData(wifiQrText(wifi.ssid, wifi.psk));
+  q.make();
+  const n = q.getModuleCount(), m = 4, k = 10, w = (n + 2 * m) * k, h = w + 40;
+  const cv = document.createElement("canvas"), g = cv.getContext("2d");
+  cv.width = w; cv.height = h;
+  g.fillStyle = "#fff"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "#000";
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) g.fillRect((c + m) * k, (r + m) * k, k, k);
+  g.font = "bold 18px sans-serif"; g.textAlign = "center";
+  g.fillText("Sender Setup-WLAN: " + wifi.ssid, w / 2, w + 24);
+  const name = "setup-wlan-" + wifi.ssid + ".png";
+  cv.toBlob(b => {
+    if (!b) return;
+    const u = URL.createObjectURL(b), a = document.createElement("a");
+    a.href = u; a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(u), 1000);
+  }, "image/png");
+};
+
+$("wstop").onclick = () => { wifiStop = true; };
+
+// Liest die Konsole des Senders, bis die Zeile mit dem Setup-WLAN kommt. Nach dem Neustart meldet sich der USB-JTAG neu
+// an: der Port verschwindet kurz. Dann denselben oder den einzigen neu aufgetauchten Port gleicher VID/PID (findPort)
+// wieder oeffnen. Liefert das Ergebnis von parseWifiLine, {lost: true} (kein Port mehr) oder null (nichts gekommen).
+async function listenWifi(port, known) {
+  const t0 = Date.now(), scan = wifiScanner(), dec = new TextDecoder();
+  const left = () => !wifiStop && Date.now() - t0 < WIFI_MAX_MS;
+  let opened = false;
+  wifiStop = false;
+  $("wstop").hidden = false;
+  try {
+    while (left()) {
+      if (!opened && Date.now() - t0 > WIFI_LOST_MS) return { lost: true };
+      port = await findPort(port, known, 100);
+      try { await port.open({ baudRate: 115200 }); } catch { await sleep(200); continue; }
+      opened = true;
+      const reader = port.readable.getReader();
+      const tick = setInterval(() => {
+        if (Date.now() - t0 > WIFI_HINT_MS) $("whint").hidden = false;
+        if (!left()) reader.cancel().catch(() => {});
+      }, 250);
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const r = scan(dec.decode(value, { stream: true }));
+          if (r) return r;
+        }
+      } catch {  // Geraet weg (Neustart, Kabel): gleich neu oeffnen
+      } finally {
+        clearInterval(tick);
+        try { reader.releaseLock(); } catch {}
+        try { await port.close(); } catch {}
+      }
+      await sleep(100);
+    }
+    return null;
+  } finally {
+    $("wstop").hidden = true;
+    $("whint").hidden = true;
+  }
+}
+
+async function readWifi(port, known) {
+  wipeWifi();
+  const t0 = Date.now(), show = () => {
+    const s = Math.round((Date.now() - t0) / 1000);
+    $("wst").textContent = `Lese WLAN-Daten … ${s} s (der Sender startet neu und meldet sich meist nach 10 bis 20 s)`;
+    $("wbar").style.width = Math.min(100, 100 * (Date.now() - t0) / WIFI_MAX_MS) + "%";
+  };
+  show(); $("wprog").hidden = false;
+  const tick = setInterval(show, 1000);
+  let r = null;
+  try { r = await listenWifi(port, known); } catch { r = { lost: true }; }
+  clearInterval(tick); $("wprog").hidden = true;
+  $("wst").textContent = "";
+  if (r && r.lost) {
+    wifiMsg("Die Seite findet den Sender nach dem Neustart nicht wieder.", "Klick auf „WLAN-Daten des Senders anzeigen“ und " +
+      "wähl ihn in der Liste noch einmal aus.");
+  } else if (r) {
+    showWifi(r);
+  } else if (!wifiStop) {
+    wifiMsg("Keine WLAN-Daten empfangen.", "Klick noch einmal auf „WLAN-Daten des Senders anzeigen“. Ist der Sender schon " +
+      "gekoppelt, halte während des Lesens die Taste BOOT 10 Sekunden gedrückt, bis die Leuchte orange blinkt.");
+  }
+}
+
+// Ohne Installieren: verbinden (wie beim Flashen), pruefen, dass ein Sender dranhaengt, per Watchdog neu starten, lesen.
+$("wgo").onclick = async () => {
+  if (state.busy) return;
+  wipeWifi();
+  let port;
+  try {
+    port = await navigator.serial.requestPort({ filters: [{ usbVendorId: ESPRESSIF_VID }] });
+  } catch (e) {
+    if (e.name !== "NotFoundError") wifiMsg("Der Browser hat den Zugriff verweigert.", "");
+    return;
+  }
+  state.busy = true; render();
+  $("log").textContent = "";
+  let conn = null, after = null;
+  try {
+    $("wst").textContent = "Verbinde mit dem Sender …";
+    conn = await connect(port);
+    const l = conn.loader;
+    if (l.chip.CHIP_NAME !== "ESP32-S3") throw new Refused("Das angeschlossene Gerät ist kein Sender. " + REPLUG);
+    await disableWatchdogs(l);
+    const v = deviceVerdict("sender", "new", await identify(l));  // "new": nur die Rolle zaehlt, nicht die Aufteilung
+    terminal.writeLine("Verbunden: " + v.label);
+    if (v.refuse || v.confirm) throw new Refused(`Angeschlossen ist ${v.label}, kein Sender mit dieser Firmware. ` + (await backToApp(l)));
+    $("wst").textContent = "Starte den Sender neu …";
+    const known = await navigator.serial.getPorts();
+    await watchdogReset(l);
+    after = { port: conn.transport.device, known };
+  } catch (e) {
+    terminal.writeLine("Fehler: " + (e && e.message));
+    if (e instanceof Refused) wifiMsg("Nichts gelesen.", e.message);
+    else if (!conn) wifiMsg("Der Sender antwortet nicht.", (e && e.restarted ? "Er startet wieder normal. " : "") +
+      WAKE.replaceAll("Installieren", "„WLAN-Daten des Senders anzeigen“"));
+    else wifiMsg("Der Sender ließ sich nicht neu starten.", (await backToApp(conn.loader)) + " Danach noch einmal versuchen.");
+  } finally {
+    if (conn) { try { await conn.transport.disconnect(); } catch {} }
+    if (after) await readWifi(after.port, after.known);
+    state.busy = false; render();
+  }
+};
+// ---- Ende Setup-WLAN ----
+
 render();
 </script>
 </body>
